@@ -10,9 +10,24 @@ import {
   type TDataShape,
 } from "./client/index.js";
 import type {
+  AddOrganizationMemberData,
+  AddOrganizationMemberErrors,
+  AddOrganizationMemberResponses,
+  ApproveDeviceAuthorizationData,
+  ApproveDeviceAuthorizationErrors,
+  ApproveDeviceAuthorizationResponses,
+  ChangePasswordData,
+  ChangePasswordErrors,
+  ChangePasswordResponses,
+  CreateApiKeyData,
+  CreateApiKeyErrors,
+  CreateApiKeyResponses,
   CreateIndexData,
   CreateIndexErrors,
   CreateIndexResponses,
+  CreateOrganizationData,
+  CreateOrganizationErrors,
+  CreateOrganizationResponses,
   DeleteDocumentData,
   DeleteDocumentErrors,
   DeleteDocumentResponses,
@@ -22,18 +37,48 @@ import type {
   DeleteObjectsData,
   DeleteObjectsErrors,
   DeleteObjectsResponses,
+  DeleteOrganizationData,
+  DeleteOrganizationErrors,
+  DeleteOrganizationResponses,
+  DenyDeviceAuthorizationData,
+  DenyDeviceAuthorizationErrors,
+  DenyDeviceAuthorizationResponses,
+  GetCurrentUserData,
+  GetCurrentUserErrors,
+  GetCurrentUserResponses,
   GetDocumentData,
   GetDocumentErrors,
   GetDocumentResponses,
   GetIndexData,
   GetIndexErrors,
   GetIndexResponses,
+  GetOrganizationData,
+  GetOrganizationErrors,
+  GetOrganizationResponses,
+  GetUsernameAvailabilityData,
+  GetUsernameAvailabilityErrors,
+  GetUsernameAvailabilityResponses,
+  ListApiKeysData,
+  ListApiKeysErrors,
+  ListApiKeysResponses,
   ListDocumentsData,
   ListDocumentsErrors,
   ListDocumentsResponses,
   ListIndexesData,
   ListIndexesErrors,
   ListIndexesResponses,
+  ListOrganizationMembersData,
+  ListOrganizationMembersErrors,
+  ListOrganizationMembersResponses,
+  ListOrganizationsData,
+  ListOrganizationsErrors,
+  ListOrganizationsResponses,
+  LoginData,
+  LoginErrors,
+  LoginResponses,
+  LogoutData,
+  LogoutErrors,
+  LogoutResponses,
   PollDeviceTokenData,
   PollDeviceTokenErrors,
   PollDeviceTokenResponses,
@@ -46,12 +91,27 @@ import type {
   QueryIndexData,
   QueryIndexErrors,
   QueryIndexResponses,
+  RegisterUserData,
+  RegisterUserErrors,
+  RegisterUserResponses,
+  RemoveOrganizationMemberData,
+  RemoveOrganizationMemberErrors,
+  RemoveOrganizationMemberResponses,
+  RevokeApiKeyData,
+  RevokeApiKeyErrors,
+  RevokeApiKeyResponses,
   StartDeviceAuthorizationData,
   StartDeviceAuthorizationErrors,
   StartDeviceAuthorizationResponses,
+  TransferOrganizationOwnershipData,
+  TransferOrganizationOwnershipErrors,
+  TransferOrganizationOwnershipResponses,
   UpdateIndexData,
   UpdateIndexErrors,
   UpdateIndexResponses,
+  UpdateOrganizationMemberData,
+  UpdateOrganizationMemberErrors,
+  UpdateOrganizationMemberResponses,
 } from "./types.gen.js";
 
 export type Options<
@@ -71,6 +131,129 @@ export type Options<
    */
   meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * Register a local user
+ *
+ * A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address.
+ */
+export const registerUser = <ThrowOnError extends boolean = false>(
+  options: Options<RegisterUserData, ThrowOnError>,
+): RequestResult<RegisterUserResponses, RegisterUserErrors, ThrowOnError> =>
+  (options.client ?? client).post<
+    RegisterUserResponses,
+    RegisterUserErrors,
+    ThrowOnError
+  >({
+    url: "/auth/register",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Check whether a username is available
+ */
+export const getUsernameAvailability = <ThrowOnError extends boolean = false>(
+  options: Options<GetUsernameAvailabilityData, ThrowOnError>,
+): RequestResult<
+  GetUsernameAvailabilityResponses,
+  GetUsernameAvailabilityErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).get<
+    GetUsernameAvailabilityResponses,
+    GetUsernameAvailabilityErrors,
+    ThrowOnError
+  >({ url: "/auth/usernames/{name}", ...options });
+
+/**
+ * Create a user session
+ */
+export const login = <ThrowOnError extends boolean = false>(
+  options: Options<LoginData, ThrowOnError>,
+): RequestResult<LoginResponses, LoginErrors, ThrowOnError> =>
+  (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
+    url: "/auth/login",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Revoke the current session
+ */
+export const logout = <ThrowOnError extends boolean = false>(
+  options?: Options<LogoutData, ThrowOnError>,
+): RequestResult<LogoutResponses, LogoutErrors, ThrowOnError> =>
+  (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>(
+    {
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/auth/logout",
+      ...options,
+    },
+  );
+
+/**
+ * Get the current user
+ */
+export const getCurrentUser = <ThrowOnError extends boolean = false>(
+  options?: Options<GetCurrentUserData, ThrowOnError>,
+): RequestResult<GetCurrentUserResponses, GetCurrentUserErrors, ThrowOnError> =>
+  (options?.client ?? client).get<
+    GetCurrentUserResponses,
+    GetCurrentUserErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/auth/me",
+    ...options,
+  });
+
+/**
+ * Change the current password
+ */
+export const changePassword = <ThrowOnError extends boolean = false>(
+  options: Options<ChangePasswordData, ThrowOnError>,
+): RequestResult<ChangePasswordResponses, ChangePasswordErrors, ThrowOnError> =>
+  (options.client ?? client).put<
+    ChangePasswordResponses,
+    ChangePasswordErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/auth/password",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
 
 /**
  * Start device authorization
@@ -96,6 +279,70 @@ export const startDeviceAuthorization = <ThrowOnError extends boolean = false>(
   });
 
 /**
+ * Approve device authorization
+ */
+export const approveDeviceAuthorization = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<ApproveDeviceAuthorizationData, ThrowOnError>,
+): RequestResult<
+  ApproveDeviceAuthorizationResponses,
+  ApproveDeviceAuthorizationErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    ApproveDeviceAuthorizationResponses,
+    ApproveDeviceAuthorizationErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/device/authorizations/approve",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Deny device authorization
+ */
+export const denyDeviceAuthorization = <ThrowOnError extends boolean = false>(
+  options: Options<DenyDeviceAuthorizationData, ThrowOnError>,
+): RequestResult<
+  DenyDeviceAuthorizationResponses,
+  DenyDeviceAuthorizationErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    DenyDeviceAuthorizationResponses,
+    DenyDeviceAuthorizationErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/device/authorizations/deny",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
  * Poll for a device API key
  */
 export const pollDeviceToken = <ThrowOnError extends boolean = false>(
@@ -111,6 +358,340 @@ export const pollDeviceToken = <ThrowOnError extends boolean = false>(
     ThrowOnError
   >({
     url: "/device/token",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * List API keys
+ */
+export const listApiKeys = <ThrowOnError extends boolean = false>(
+  options?: Options<ListApiKeysData, ThrowOnError>,
+): RequestResult<ListApiKeysResponses, ListApiKeysErrors, ThrowOnError> =>
+  (options?.client ?? client).get<
+    ListApiKeysResponses,
+    ListApiKeysErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/api-keys",
+    ...options,
+  });
+
+/**
+ * Create an API key
+ */
+export const createApiKey = <ThrowOnError extends boolean = false>(
+  options: Options<CreateApiKeyData, ThrowOnError>,
+): RequestResult<CreateApiKeyResponses, CreateApiKeyErrors, ThrowOnError> =>
+  (options.client ?? client).post<
+    CreateApiKeyResponses,
+    CreateApiKeyErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/api-keys",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Revoke an API key
+ */
+export const revokeApiKey = <ThrowOnError extends boolean = false>(
+  options: Options<RevokeApiKeyData, ThrowOnError>,
+): RequestResult<RevokeApiKeyResponses, RevokeApiKeyErrors, ThrowOnError> =>
+  (options.client ?? client).delete<
+    RevokeApiKeyResponses,
+    RevokeApiKeyErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/api-keys/{api_key_id}",
+    ...options,
+  });
+
+/**
+ * List organizations
+ */
+export const listOrganizations = <ThrowOnError extends boolean = false>(
+  options?: Options<ListOrganizationsData, ThrowOnError>,
+): RequestResult<
+  ListOrganizationsResponses,
+  ListOrganizationsErrors,
+  ThrowOnError
+> =>
+  (options?.client ?? client).get<
+    ListOrganizationsResponses,
+    ListOrganizationsErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations",
+    ...options,
+  });
+
+/**
+ * Create an organization
+ */
+export const createOrganization = <ThrowOnError extends boolean = false>(
+  options: Options<CreateOrganizationData, ThrowOnError>,
+): RequestResult<
+  CreateOrganizationResponses,
+  CreateOrganizationErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    CreateOrganizationResponses,
+    CreateOrganizationErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Delete an organization
+ */
+export const deleteOrganization = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteOrganizationData, ThrowOnError>,
+): RequestResult<
+  DeleteOrganizationResponses,
+  DeleteOrganizationErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).delete<
+    DeleteOrganizationResponses,
+    DeleteOrganizationErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations/{organization}",
+    ...options,
+  });
+
+/**
+ * Get an organization
+ */
+export const getOrganization = <ThrowOnError extends boolean = false>(
+  options: Options<GetOrganizationData, ThrowOnError>,
+): RequestResult<
+  GetOrganizationResponses,
+  GetOrganizationErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).get<
+    GetOrganizationResponses,
+    GetOrganizationErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations/{organization}",
+    ...options,
+  });
+
+/**
+ * List organization members
+ */
+export const listOrganizationMembers = <ThrowOnError extends boolean = false>(
+  options: Options<ListOrganizationMembersData, ThrowOnError>,
+): RequestResult<
+  ListOrganizationMembersResponses,
+  ListOrganizationMembersErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).get<
+    ListOrganizationMembersResponses,
+    ListOrganizationMembersErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations/{organization}/members",
+    ...options,
+  });
+
+/**
+ * Add an organization member
+ */
+export const addOrganizationMember = <ThrowOnError extends boolean = false>(
+  options: Options<AddOrganizationMemberData, ThrowOnError>,
+): RequestResult<
+  AddOrganizationMemberResponses,
+  AddOrganizationMemberErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    AddOrganizationMemberResponses,
+    AddOrganizationMemberErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations/{organization}/members",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Remove an organization member
+ */
+export const removeOrganizationMember = <ThrowOnError extends boolean = false>(
+  options: Options<RemoveOrganizationMemberData, ThrowOnError>,
+): RequestResult<
+  RemoveOrganizationMemberResponses,
+  RemoveOrganizationMemberErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).delete<
+    RemoveOrganizationMemberResponses,
+    RemoveOrganizationMemberErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations/{organization}/members/{user}",
+    ...options,
+  });
+
+/**
+ * Change an organization member role
+ */
+export const updateOrganizationMember = <ThrowOnError extends boolean = false>(
+  options: Options<UpdateOrganizationMemberData, ThrowOnError>,
+): RequestResult<
+  UpdateOrganizationMemberResponses,
+  UpdateOrganizationMemberErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).put<
+    UpdateOrganizationMemberResponses,
+    UpdateOrganizationMemberErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations/{organization}/members/{user}",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+/**
+ * Transfer organization ownership
+ */
+export const transferOrganizationOwnership = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<TransferOrganizationOwnershipData, ThrowOnError>,
+): RequestResult<
+  TransferOrganizationOwnershipResponses,
+  TransferOrganizationOwnershipErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).put<
+    TransferOrganizationOwnershipResponses,
+    TransferOrganizationOwnershipErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        in: "cookie",
+        name: "__Host-grepvine-session",
+        type: "apiKey",
+      },
+      { scheme: "bearer", type: "http" },
+    ],
+    url: "/organizations/{organization}/owner",
     ...options,
     headers: {
       "Content-Type": "application/json",
