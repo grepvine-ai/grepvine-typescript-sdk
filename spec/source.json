@@ -1,0 +1,22 @@
+{
+  "repository": "grepvine-ai/grepvine",
+  "commit": "3b0d48133f1e1987603d17cdc25369dc5dc5e6e0",
+  "path": "api/openapi.yaml",
+  "operations": [
+    "listIndexes",
+    "createIndex",
+    "getIndex",
+    "updateIndex",
+    "deleteIndex",
+    "listDocuments",
+    "putDocument",
+    "getDocument",
+    "deleteDocument",
+    "putObjects",
+    "deleteObjects",
+    "queryIndex",
+    "startDeviceAuthorization",
+    "pollDeviceToken"
+  ],
+  "snapshot_sha256": "3769b399e7e34dee20db889bf554614462c0cfaa0e68d9d1efd580bfe3c657c3"
+}
