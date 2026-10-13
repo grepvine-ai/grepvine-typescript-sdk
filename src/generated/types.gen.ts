@@ -28,6 +28,37 @@ export type Name = string;
  */
 export type IndexName = string;
 
+export type User = {
+  id: string;
+  name: Name;
+  email: string;
+  created_at: string;
+};
+
+export type RegisterRequest = {
+  name: Name;
+  email: string;
+  password: string;
+};
+
+export type UsernameAvailability = {
+  name: Name;
+  available: boolean;
+};
+
+export type LoginRequest = {
+  /**
+   * A username or an email address, matched case-insensitively.
+   */
+  identifier: string;
+  password: string;
+};
+
+export type ChangePasswordRequest = {
+  current_password: string;
+  new_password: string;
+};
+
 export type DeviceAuthorizationRequest = {
   api_key_name: string;
 };
@@ -41,8 +72,16 @@ export type DeviceAuthorization = {
   interval: number;
 };
 
+export type DeviceDecisionRequest = {
+  user_code: string;
+};
+
 export type DeviceTokenRequest = {
   device_code: string;
+};
+
+export type CreateApiKeyRequest = {
+  name: string;
 };
 
 export type ApiKey = {
@@ -56,6 +95,53 @@ export type ApiKey = {
 
 export type ApiKeyCreated = ApiKey & {
   key: string;
+};
+
+export type ApiKeyPage = {
+  results: Array<ApiKey>;
+  pagination: Pagination;
+};
+
+export type Organization = {
+  id: string;
+  name: Name;
+  role: Role;
+  created_at: string;
+};
+
+export type OrganizationPage = {
+  results: Array<Organization>;
+  pagination: Pagination;
+};
+
+export type CreateOrganizationRequest = {
+  name: Name;
+};
+
+export type Role = "owner" | "admin" | "developer" | "reader";
+
+export type Member = {
+  user: User;
+  role: Role;
+  created_at: string;
+};
+
+export type MemberPage = {
+  results: Array<Member>;
+  pagination: Pagination;
+};
+
+export type AddMemberRequest = {
+  user: Name;
+  role: "admin" | "developer" | "reader";
+};
+
+export type UpdateMemberRequest = {
+  role: "admin" | "developer" | "reader";
+};
+
+export type TransferOwnershipRequest = {
+  user: Name;
 };
 
 export type IndexState = "creating" | "ready" | "deleting" | "delete_failed";
@@ -181,6 +267,17 @@ export type PutDocumentForm = {
    * The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is stored without being searchable.
    */
   content: Blob | File;
+};
+
+export type PutObjectRecord = {
+  key: string;
+  /**
+   * The document text. A batch carries text only, so every document it stores is searchable.
+   */
+  content: string;
+  metadata?: Metadata;
+  if_match?: string;
+  if_none_match?: "*";
 };
 
 export type DeleteObjectRecord = {
@@ -325,7 +422,7 @@ export type Amount = number;
 
 export type Page = string;
 
-export type Organization = Name;
+export type Organization2 = Name;
 
 export type Index2 = IndexName;
 
@@ -348,6 +445,10 @@ export type Delimiter = string;
  */
 export type Range = string;
 
+export type User2 = Name;
+
+export type ApiKeyId = string;
+
 export type IdempotencyKey = string;
 
 /**
@@ -358,6 +459,193 @@ export type CsrfToken = string;
 export type IfMatch = string;
 
 export type IfNoneMatch = "*";
+
+export type RegisterUserData = {
+  body: RegisterRequest;
+  path?: never;
+  query?: never;
+  url: "/auth/register";
+};
+
+export type RegisterUserErrors = {
+  /**
+   * The request conflicts with current state.
+   */
+  409: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type RegisterUserError = RegisterUserErrors[keyof RegisterUserErrors];
+
+export type RegisterUserResponses = {
+  /**
+   * The user and session were created.
+   */
+  201: User;
+};
+
+export type RegisterUserResponse =
+  RegisterUserResponses[keyof RegisterUserResponses];
+
+export type GetUsernameAvailabilityData = {
+  body?: never;
+  path: {
+    name: Name;
+  };
+  query?: never;
+  url: "/auth/usernames/{name}";
+};
+
+export type GetUsernameAvailabilityErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type GetUsernameAvailabilityError =
+  GetUsernameAvailabilityErrors[keyof GetUsernameAvailabilityErrors];
+
+export type GetUsernameAvailabilityResponses = {
+  /**
+   * Whether an account can register this username now. Accounts and organizations share one namespace. The answer can change before the name is registered.
+   */
+  200: UsernameAvailability;
+};
+
+export type GetUsernameAvailabilityResponse =
+  GetUsernameAvailabilityResponses[keyof GetUsernameAvailabilityResponses];
+
+export type LoginData = {
+  body: LoginRequest;
+  path?: never;
+  query?: never;
+  url: "/auth/login";
+};
+
+export type LoginErrors = {
+  /**
+   * Authentication is required or failed.
+   */
+  401: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type LoginError = LoginErrors[keyof LoginErrors];
+
+export type LoginResponses = {
+  /**
+   * The session was created.
+   */
+  200: User;
+};
+
+export type LoginResponse = LoginResponses[keyof LoginResponses];
+
+export type LogoutData = {
+  body?: never;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/auth/logout";
+};
+
+export type LogoutErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type LogoutError = LogoutErrors[keyof LogoutErrors];
+
+export type LogoutResponses = {
+  /**
+   * The session was revoked.
+   */
+  204: void;
+};
+
+export type LogoutResponse = LogoutResponses[keyof LogoutResponses];
+
+export type GetCurrentUserData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/auth/me";
+};
+
+export type GetCurrentUserErrors = {
+  /**
+   * Authentication is required or failed.
+   */
+  401: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type GetCurrentUserError =
+  GetCurrentUserErrors[keyof GetCurrentUserErrors];
+
+export type GetCurrentUserResponses = {
+  /**
+   * The authenticated user.
+   */
+  200: User;
+};
+
+export type GetCurrentUserResponse =
+  GetCurrentUserResponses[keyof GetCurrentUserResponses];
+
+export type ChangePasswordData = {
+  body: ChangePasswordRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/auth/password";
+};
+
+export type ChangePasswordErrors = {
+  /**
+   * Authentication is required or failed.
+   */
+  401: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type ChangePasswordError =
+  ChangePasswordErrors[keyof ChangePasswordErrors];
+
+export type ChangePasswordResponses = {
+  /**
+   * The password was changed.
+   */
+  204: void;
+};
+
+export type ChangePasswordResponse =
+  ChangePasswordResponses[keyof ChangePasswordResponses];
 
 export type StartDeviceAuthorizationData = {
   body: DeviceAuthorizationRequest;
@@ -385,6 +673,80 @@ export type StartDeviceAuthorizationResponses = {
 
 export type StartDeviceAuthorizationResponse =
   StartDeviceAuthorizationResponses[keyof StartDeviceAuthorizationResponses];
+
+export type ApproveDeviceAuthorizationData = {
+  body: DeviceDecisionRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/device/authorizations/approve";
+};
+
+export type ApproveDeviceAuthorizationErrors = {
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type ApproveDeviceAuthorizationError =
+  ApproveDeviceAuthorizationErrors[keyof ApproveDeviceAuthorizationErrors];
+
+export type ApproveDeviceAuthorizationResponses = {
+  /**
+   * The device authorization was approved.
+   */
+  204: void;
+};
+
+export type ApproveDeviceAuthorizationResponse =
+  ApproveDeviceAuthorizationResponses[keyof ApproveDeviceAuthorizationResponses];
+
+export type DenyDeviceAuthorizationData = {
+  body: DeviceDecisionRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/device/authorizations/deny";
+};
+
+export type DenyDeviceAuthorizationErrors = {
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type DenyDeviceAuthorizationError =
+  DenyDeviceAuthorizationErrors[keyof DenyDeviceAuthorizationErrors];
+
+export type DenyDeviceAuthorizationResponses = {
+  /**
+   * The device authorization was denied.
+   */
+  204: void;
+};
+
+export type DenyDeviceAuthorizationResponse =
+  DenyDeviceAuthorizationResponses[keyof DenyDeviceAuthorizationResponses];
 
 export type PollDeviceTokenData = {
   body: DeviceTokenRequest;
@@ -416,6 +778,415 @@ export type PollDeviceTokenResponses = {
 
 export type PollDeviceTokenResponse =
   PollDeviceTokenResponses[keyof PollDeviceTokenResponses];
+
+export type ListApiKeysData = {
+  body?: never;
+  path?: never;
+  query?: {
+    amount?: number;
+    page?: string;
+  };
+  url: "/api-keys";
+};
+
+export type ListApiKeysErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type ListApiKeysError = ListApiKeysErrors[keyof ListApiKeysErrors];
+
+export type ListApiKeysResponses = {
+  /**
+   * A page of API keys.
+   */
+  200: ApiKeyPage;
+};
+
+export type ListApiKeysResponse =
+  ListApiKeysResponses[keyof ListApiKeysResponses];
+
+export type CreateApiKeyData = {
+  body: CreateApiKeyRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/api-keys";
+};
+
+export type CreateApiKeyErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type CreateApiKeyError = CreateApiKeyErrors[keyof CreateApiKeyErrors];
+
+export type CreateApiKeyResponses = {
+  /**
+   * The new API key. The key is shown once.
+   */
+  201: ApiKeyCreated;
+};
+
+export type CreateApiKeyResponse =
+  CreateApiKeyResponses[keyof CreateApiKeyResponses];
+
+export type RevokeApiKeyData = {
+  body?: never;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path: {
+    api_key_id: string;
+  };
+  query?: never;
+  url: "/api-keys/{api_key_id}";
+};
+
+export type RevokeApiKeyErrors = {
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type RevokeApiKeyError = RevokeApiKeyErrors[keyof RevokeApiKeyErrors];
+
+export type RevokeApiKeyResponses = {
+  /**
+   * The API key was revoked.
+   */
+  204: void;
+};
+
+export type RevokeApiKeyResponse =
+  RevokeApiKeyResponses[keyof RevokeApiKeyResponses];
+
+export type ListOrganizationsData = {
+  body?: never;
+  path?: never;
+  query?: {
+    amount?: number;
+    page?: string;
+  };
+  url: "/organizations";
+};
+
+export type ListOrganizationsErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type ListOrganizationsError =
+  ListOrganizationsErrors[keyof ListOrganizationsErrors];
+
+export type ListOrganizationsResponses = {
+  /**
+   * A page of organizations.
+   */
+  200: OrganizationPage;
+};
+
+export type ListOrganizationsResponse =
+  ListOrganizationsResponses[keyof ListOrganizationsResponses];
+
+export type CreateOrganizationData = {
+  body: CreateOrganizationRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/organizations";
+};
+
+export type CreateOrganizationErrors = {
+  /**
+   * The request conflicts with current state.
+   */
+  409: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type CreateOrganizationError =
+  CreateOrganizationErrors[keyof CreateOrganizationErrors];
+
+export type CreateOrganizationResponses = {
+  /**
+   * The organization was created.
+   */
+  201: Organization;
+};
+
+export type CreateOrganizationResponse =
+  CreateOrganizationResponses[keyof CreateOrganizationResponses];
+
+export type DeleteOrganizationData = {
+  body?: never;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path: {
+    organization: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}";
+};
+
+export type DeleteOrganizationErrors = {
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type DeleteOrganizationError =
+  DeleteOrganizationErrors[keyof DeleteOrganizationErrors];
+
+export type DeleteOrganizationResponses = {
+  /**
+   * Organization deletion started.
+   */
+  202: unknown;
+};
+
+export type GetOrganizationData = {
+  body?: never;
+  path: {
+    organization: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}";
+};
+
+export type GetOrganizationErrors = {
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type GetOrganizationError =
+  GetOrganizationErrors[keyof GetOrganizationErrors];
+
+export type GetOrganizationResponses = {
+  /**
+   * The organization.
+   */
+  200: Organization;
+};
+
+export type GetOrganizationResponse =
+  GetOrganizationResponses[keyof GetOrganizationResponses];
+
+export type ListOrganizationMembersData = {
+  body?: never;
+  path: {
+    organization: Name;
+  };
+  query?: {
+    amount?: number;
+    page?: string;
+  };
+  url: "/organizations/{organization}/members";
+};
+
+export type ListOrganizationMembersErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type ListOrganizationMembersError =
+  ListOrganizationMembersErrors[keyof ListOrganizationMembersErrors];
+
+export type ListOrganizationMembersResponses = {
+  /**
+   * A page of organization members.
+   */
+  200: MemberPage;
+};
+
+export type ListOrganizationMembersResponse =
+  ListOrganizationMembersResponses[keyof ListOrganizationMembersResponses];
+
+export type AddOrganizationMemberData = {
+  body: AddMemberRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path: {
+    organization: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/members";
+};
+
+export type AddOrganizationMemberErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type AddOrganizationMemberError =
+  AddOrganizationMemberErrors[keyof AddOrganizationMemberErrors];
+
+export type AddOrganizationMemberResponses = {
+  /**
+   * The member was added.
+   */
+  201: Member;
+};
+
+export type AddOrganizationMemberResponse =
+  AddOrganizationMemberResponses[keyof AddOrganizationMemberResponses];
+
+export type RemoveOrganizationMemberData = {
+  body?: never;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path: {
+    organization: Name;
+    user: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/members/{user}";
+};
+
+export type RemoveOrganizationMemberErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type RemoveOrganizationMemberError =
+  RemoveOrganizationMemberErrors[keyof RemoveOrganizationMemberErrors];
+
+export type RemoveOrganizationMemberResponses = {
+  /**
+   * The member was removed.
+   */
+  204: void;
+};
+
+export type RemoveOrganizationMemberResponse =
+  RemoveOrganizationMemberResponses[keyof RemoveOrganizationMemberResponses];
+
+export type UpdateOrganizationMemberData = {
+  body: UpdateMemberRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path: {
+    organization: Name;
+    user: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/members/{user}";
+};
+
+export type UpdateOrganizationMemberErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type UpdateOrganizationMemberError =
+  UpdateOrganizationMemberErrors[keyof UpdateOrganizationMemberErrors];
+
+export type UpdateOrganizationMemberResponses = {
+  /**
+   * The member role was changed.
+   */
+  200: Member;
+};
+
+export type UpdateOrganizationMemberResponse =
+  UpdateOrganizationMemberResponses[keyof UpdateOrganizationMemberResponses];
+
+export type TransferOrganizationOwnershipData = {
+  body: TransferOwnershipRequest;
+  headers?: {
+    /**
+     * Required for a state change that uses cookie authentication.
+     */
+    "X-Csrf-Token"?: string;
+  };
+  path: {
+    organization: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/owner";
+};
+
+export type TransferOrganizationOwnershipErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   */
+  default: Error;
+};
+
+export type TransferOrganizationOwnershipError =
+  TransferOrganizationOwnershipErrors[keyof TransferOrganizationOwnershipErrors];
+
+export type TransferOrganizationOwnershipResponses = {
+  /**
+   * Ownership was transferred.
+   */
+  204: void;
+};
+
+export type TransferOrganizationOwnershipResponse =
+  TransferOrganizationOwnershipResponses[keyof TransferOrganizationOwnershipResponses];
 
 export type ListIndexesData = {
   body?: never;
