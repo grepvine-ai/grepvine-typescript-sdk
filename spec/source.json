@@ -1,6 +1,6 @@
 {
   "repository": "grepvine-ai/grepvine",
-  "commit": "3b0d48133f1e1987603d17cdc25369dc5dc5e6e0",
+  "commit": "a9bc40fd1a72b6b1f5da2608a35b8b8cfa82a815",
   "path": "api/openapi.yaml",
   "operations": [
     "listIndexes",
