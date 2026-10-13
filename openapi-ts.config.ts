@@ -1,10 +1,7 @@
-import { existsSync } from "node:fs";
 import { defineConfig } from "@hey-api/openapi-ts";
 
 export default defineConfig({
-  input: existsSync("spec/openapi.json")
-    ? "./spec/openapi.json"
-    : "../../tmp/sdk/openapi.json",
+  input: "./spec/openapi.json",
   output: {
     path: "src/generated",
     postProcess: [

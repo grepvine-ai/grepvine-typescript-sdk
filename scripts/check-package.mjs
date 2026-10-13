@@ -31,8 +31,8 @@ try {
 import assert from "node:assert/strict";
 import { createGrepvineClient, queryIndex, putObjects } from "@grepvine/sdk";
 import * as sdk from "@grepvine/sdk";
-for (const excluded of ["registerUser", "createApiKey", "createOrganization", "approveDeviceAuthorization", "denyDeviceAuthorization"]) {
-  assert.equal(excluded in sdk, false);
+for (const operation of ["registerUser", "getUsernameAvailability", "login", "logout", "getCurrentUser", "changePassword", "startDeviceAuthorization", "approveDeviceAuthorization", "denyDeviceAuthorization", "pollDeviceToken", "listApiKeys", "createApiKey", "revokeApiKey", "listOrganizations", "createOrganization", "getOrganization", "deleteOrganization", "listOrganizationMembers", "addOrganizationMember", "updateOrganizationMember", "removeOrganizationMember", "transferOrganizationOwnership", "listIndexes", "createIndex", "getIndex", "updateIndex", "deleteIndex", "listDocuments", "putDocument", "getDocument", "deleteDocument", "putObjects", "deleteObjects", "queryIndex"]) {
+  assert.equal(typeof sdk[operation], "function");
 }
 assert.equal(typeof sdk.startDeviceAuthorization, "function");
 assert.equal(typeof sdk.pollDeviceToken, "function");

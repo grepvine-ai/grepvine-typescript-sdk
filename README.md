@@ -1,17 +1,13 @@
 # Grepvine TypeScript SDK
 
-The SDK contains 14 operations: Indexes (5), Objects (6), Search (1),
-and device login (2: start authorization and poll for the token). All other
-API sections are excluded, including browser account/session management,
-API-key management, organization management, and device approval/denial.
-Existing API keys still authenticate data operations using bearer credentials.
-Device approval happens in the browser; successful polling returns an API key.
+The SDK includes all 34 public API operations: Authentication, Device login,
+API keys, Organizations and membership, Indexes, Objects, and Search.
+API keys authenticate operations that support bearer credentials; browser-account
+operations use the session authentication described by the API contract.
 
-Grepvine selects these operations using `clients/sdk-operations.json` before
-exporting `spec/openapi.json` to the independent SDK repositories. Each snapshot
-keeps its referenced types, parameters, headers, responses, and authentication
-schemes. `spec/source.json` records the source repository, commit, operation
-selection, and snapshot checksum. The server contract remains unchanged.
+Grepvine exports its full public contract as `spec/openapi.json` without filtering
+operations or components. `spec/source.json` records the source repository,
+commit, exported operation list, and snapshot checksum.
 
 Typed operations for the Grepvine API, for Node.js 22.18+ and browsers.
 This package is separate from the web application's API code.
@@ -110,8 +106,7 @@ Pass an independent client to each operation. The default URL is
 For browser sessions, omit the API key, set `credentials: "include"`, and
 supply `X-Csrf-Token` on state changes. Standard browser cross-origin rules apply.
 
-Operations and wire types are generated from the exported `spec/openapi.json`
-(or Grepvine’s `../../api/openapi.yaml` in its checkout) with
+Operations and wire types are generated from the exported `spec/openapi.json` with
 `@hey-api/openapi-ts@0.99.0` (types, SDK, and Fetch plugins).
 Generation dependencies are development-only; consumers do not need them.
 Use root package exports. `putObjects` has a small adapter to transmit its NDJSON string unchanged:
@@ -156,7 +151,7 @@ and reconnection semantics.
 
 ## Development
 
-From the SDK repository root (or `clients/ts-sdk` in Grepvine):
+From the SDK repository root:
 
 ```sh
 npm ci
@@ -167,11 +162,9 @@ npm run build
 node scripts/check-package.mjs
 ```
 
-Standalone generation reads the exported snapshot and needs only Node.js.
-In the Grepvine checkout, generation uses the Python SDK environment through
-uv to select operations into `../../tmp/sdk/openapi.json`. Consumers need
+Generation reads the exported snapshot and needs only Node.js. Consumers need
 neither uv nor Python. Change the source contract in Grepvine rather than
-editing the standalone snapshot.
+editing the snapshot.
 
 Generated output lives in `src/generated`; change the contract or generator
 configuration and regenerate it. Helpers, exports, docs, and tests live outside
