@@ -1,0 +1,39 @@
+{
+  "name": "@grepvine/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Grepvine API",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "build": "node scripts/build.mjs",
+    "lint": "tsc --noEmit && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "example:ingest-search": "npm run build && node examples/ingest-search.ts",
+    "example:convenience": "npm run build && node examples/convenience.ts"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "typescript": "5.9.3",
+    "prettier": "3.9.6",
+    "vitest": "4.1.11",
+    "@types/node": "26.4.1"
+  },
+  "overrides": {
+    "js-yaml": "4.3.2"
+  }
+}

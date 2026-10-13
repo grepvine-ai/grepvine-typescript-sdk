@@ -1,0 +1,64 @@
+name: Regenerate and validate SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_commit:
+        description: Snapshot commit pushed by Grepvine (empty uses current main)
+        type: string
+        required: false
+  push:
+    branches: [main]
+    paths-ignore: ["spec/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.sha }}
+          fetch-depth: 0
+      - name: Check the requested snapshot is still current
+        if: github.event_name == 'workflow_dispatch' && inputs.snapshot_commit != ''
+        env:
+          SNAPSHOT_COMMIT: ${{ inputs.snapshot_commit }}
+        run: |
+          [[ "$SNAPSHOT_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          git diff --exit-code "$SNAPSHOT_COMMIT" HEAD -- spec
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run generate
+      - run: npm run lint
+      - run: npm test
+      - name: Build and test installed package
+        run: |
+          npm run build
+          node scripts/check-package.mjs
+      - name: Check generated files in ordinary CI
+        if: github.event_name != 'workflow_dispatch'
+        run: git diff --exit-code -- src/generated
+      - name: Commit validated generated updates
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/generated
+          if ! git diff --cached --quiet; then
+            source_commit=$(python3 -c 'import json; print(json.load(open("spec/source.json"))["commit"])')
+            git commit -m "Generate SDK from Grepvine $source_commit"
+            git push origin HEAD:main
+          fi
