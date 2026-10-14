@@ -3,5 +3,4 @@ dist/
 src/generated/
 spec/
 docs/_build/
-docs/theme/design-system/*
-!docs/theme/design-system/SOURCE.md
+.design-system/
