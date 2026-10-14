@@ -14,7 +14,9 @@ import type {
 } from "./generated/types.gen.js";
 import { createGrepvineClient, putObjects } from "./helpers.js";
 
+/** Metadata values; the wrapper supplies the API's type tags. Unsafe integers are rejected. */
 export type MetadataInput = Record<string, string | number | boolean | Date>;
+/** One text document in a {@link Documents.putMany} batch. */
 export type Document = {
   key: string;
   content: string;
@@ -22,6 +24,7 @@ export type Document = {
   ifMatch?: string;
   ifNoneMatch?: boolean;
 };
+/** Options for {@link IndexHandle.search}. Search is regex unless `literal` is set; `amount` is 1–200. */
 export type SearchOptions = {
   literal?: boolean;
   filter?: string;
@@ -34,6 +37,7 @@ export type SearchOptions = {
   signal?: AbortSignal;
 };
 
+/** A failed or unreadable API response. `retryAfter` is in seconds, or undefined. */
 export class ApiError extends Error {
   readonly code: string;
   readonly reason: string;
@@ -55,6 +59,7 @@ export class ApiError extends Error {
   }
 }
 
+/** Thrown by {@link Documents.putMany} when any document was not stored. `results` keeps the successes too. */
 export class BatchError extends Error {
   readonly failures: MutationResult[];
   constructor(
@@ -180,6 +185,13 @@ function batchBody(documents: Iterable<Document>): string {
   return lines.join("\n") + "\n";
 }
 
+/**
+ * Resource handles, Promise-based network methods and async search iterators.
+ *
+ * `baseUrl` may be given with or without `/v1`. `timeoutMs` applies to each
+ * request (default 30,000). `raw` is the generated Fetch client, for use with
+ * the raw operations.
+ */
 export class GrepvineClient {
   readonly raw: RawClient;
   readonly indexes: Indexes;
@@ -207,7 +219,10 @@ export class GrepvineClient {
     this.indexes = new Indexes(this);
   }
 
-  /** Internal per-call configuration; raw remains available for generated operations. */
+  /**
+   * Internal per-call configuration; raw remains available for generated operations.
+   * @internal
+   */
   options(signal?: AbortSignal) {
     const timeout = AbortSignal.timeout(this.timeoutMs);
     return {
@@ -217,12 +232,14 @@ export class GrepvineClient {
   }
 }
 
+/** Index operations, reached as `client.indexes`. */
 export class Indexes {
   constructor(private readonly client: GrepvineClient) {}
   /** Build a handle without an HTTP request. info fetches its current state. */
   get(ref: string) {
     return new IndexHandle(this.client, ref);
   }
+  /** Create the index `organization/index` and return its handle. */
   async create(
     ref: string,
     options: {
@@ -247,6 +264,7 @@ export class Indexes {
   }
 }
 
+/** One index, named `organization/index`. Creating a handle sends no request. */
 export class IndexHandle {
   readonly documents: Documents;
   readonly path: { organization: string; index: string };
@@ -257,6 +275,7 @@ export class IndexHandle {
     this.path = reference(ref);
     this.documents = new Documents(this);
   }
+  /** Fetch the index's current state. */
   async info(options: { signal?: AbortSignal } = {}) {
     return result(
       await getIndex({
@@ -265,6 +284,7 @@ export class IndexHandle {
       }),
     );
   }
+  /** Request deletion of the index. */
   async delete(options: { signal?: AbortSignal } = {}) {
     checked(
       await deleteIndex({
@@ -273,6 +293,7 @@ export class IndexHandle {
       }),
     );
   }
+  /** Poll until the index is ready. Throws if it leaves `creating` for any other state. */
   async waitReady(
     options: {
       timeoutMs?: number;
@@ -316,6 +337,7 @@ export class IndexHandle {
       });
     }
   }
+  /** Yield every match, following continuation tokens lazily. */
   async *search(pattern: string, options: SearchOptions = {}) {
     const { literal = false, amount = 200, signal } = options;
     const body: QueryRequest = {
@@ -345,8 +367,13 @@ export class IndexHandle {
   }
 }
 
+/** Document operations on one index, reached as `index.documents`. */
 export class Documents {
   constructor(private readonly index: IndexHandle) {}
+  /**
+   * Store one document. Content may be text, a Blob/File, Uint8Array or
+   * ArrayBuffer. An idempotency key is generated unless one is supplied.
+   */
   async put(
     key: string,
     content: string | Blob | Uint8Array | ArrayBuffer,
@@ -391,6 +418,11 @@ export class Documents {
       );
     return stored;
   }
+  /**
+   * Store one batch of up to 2,048 text documents and 16 MiB of UTF-8 content.
+   * Batches are not split or retried. Throws {@link BatchError} on any failed
+   * document unless `raiseOnError` is false.
+   */
   async putMany(
     documents: Iterable<Document>,
     options: {

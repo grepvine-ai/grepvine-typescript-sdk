@@ -10,4 +10,10 @@ export {
   ApiError,
   BatchError,
 } from "./convenience.js";
-export type { Document, MetadataInput, SearchOptions } from "./convenience.js";
+export type {
+  Document,
+  Documents,
+  Indexes,
+  MetadataInput,
+  SearchOptions,
+} from "./convenience.js";
