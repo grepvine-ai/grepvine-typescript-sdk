@@ -1,0 +1,77 @@
+import { join } from "node:path";
+import { designSystem } from "./docs/theme/design-system.mjs";
+
+/** @type {Partial<import("typedoc").TypeDocOptions>} */
+const config = {
+  name: "@grepvine/sdk",
+  entryPoints: ["src/index.ts"],
+  tsconfig: "tsconfig.build.json",
+  out: "docs/_build",
+  readme: "docs/index.md",
+  plugin: ["./docs/theme/plugin.mjs"],
+  customCss: "docs/theme/grepvine.css",
+  customJs: "docs/theme/grepvine.js",
+  navigationLinks: {
+    GitHub: "https://github.com/grepvine-ai/grepvine-typescript-sdk",
+    npm: "https://www.npmjs.com/package/@grepvine/sdk",
+  },
+  categorizeByGroup: false,
+  categoryOrder: [
+    "Convenience client",
+    "Raw client",
+    "Operations",
+    "API types",
+    "*",
+  ],
+  navigation: {
+    includeCategories: true,
+    includeGroups: false,
+    includeFolders: false,
+  },
+  sort: ["kind", "alphabetical-ignoring-documents"],
+  excludePrivate: true,
+  excludeInternal: true,
+  intentionallyNotExported: [
+    "src/generated/client/types.gen.ts:Options",
+    "src/generated/client/types.gen.ts:RequestFn",
+    "src/generated/client/types.gen.ts:MethodFn",
+    "src/generated/client/types.gen.ts:BuildUrlFn",
+    "src/generated/client/types.gen.ts:SseFn",
+    "src/generated/client/types.gen.ts:ResponseStyle",
+    "src/generated/client/types.gen.ts:ClientOptions",
+    "src/generated/client/types.gen.ts:TDataShape",
+    "src/generated/client/types.gen.ts:RequestResult",
+    "src/generated/client/types.gen.ts:ResolvedRequestOptions",
+    "src/generated/client/utils.gen.ts:Middleware",
+    "src/generated/core/types.gen.ts:Client",
+    "src/generated/core/types.gen.ts:ClientMeta",
+    "src/generated/core/auth.gen.ts:AuthToken",
+    "src/generated/core/bodySerializer.gen.ts:BodySerializer",
+    "src/generated/core/bodySerializer.gen.ts:QuerySerializerOptions",
+    "src/generated/core/bodySerializer.gen.ts:QuerySerializer",
+  ],
+  externalSymbolLinkMappings: {
+    typescript: {
+      Body: "https://developer.mozilla.org/docs/Web/API/Response#instance_methods",
+      "JSON.stringify":
+        "https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify",
+    },
+  },
+  validation: {
+    notExported: true,
+    invalidLink: true,
+    invalidPath: true,
+    rewrittenLink: true,
+    notDocumented: false,
+    unusedMergeModuleWith: true,
+  },
+  treatWarningsAsErrors: true,
+  githubPages: true,
+  hideGenerator: false,
+  lightHighlightTheme: "github-dark",
+  darkHighlightTheme: "github-dark",
+};
+
+config.favicon = join(designSystem, "assets/Logos/grepvine-favicon.svg");
+
+export default config;
