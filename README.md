@@ -202,6 +202,17 @@ and delete indexes. API endpoints may be supplied with or without `/v1`.
 The `Regenerate and validate SDK` workflow can be triggered manually. It
 regenerates from the snapshot, runs tests and builds an installed-package
 smoke test, then commits generated changes after the checks pass. Pushes and
-pull requests validate reproducibility without committing. These workflows
-do not publish packages. Grepvine’s manual `Update SDK snapshots` workflow
+pull requests validate reproducibility without committing. Grepvine’s manual `Update SDK snapshots` workflow
 updates both repositories and requests regeneration.
+
+The `Build and publish SDK` workflow runs the same checks, builds the
+package, and publishes it to npm. Publishing a GitHub release uploads the
+tag's version (`v0.2.0` becomes `0.2.0`) under the `latest` dist-tag, or
+`next` for a pre-release. A manual run publishes only a pre-release version
+(`0.2.0-rc.1`) under a non-`latest` dist-tag (default `next`), so
+`npm install @grepvine/sdk` is unaffected until a final release; install the
+candidate with `npm install @grepvine/sdk@next`. Enable `dry_run` to build and
+run `npm publish --dry-run` without uploading. Publishing uses npm trusted
+publishing from workflow `publish.yml` in the `npm` environment; an
+`NPM_TOKEN` secret is used instead when set, for example for the first
+publish before a trusted publisher can be configured.

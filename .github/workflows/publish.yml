@@ -1,0 +1,105 @@
+name: Build and publish SDK
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Pre-release version to publish (semver, e.g. 0.2.0-rc.1)
+        type: string
+        required: true
+      tag:
+        description: npm dist-tag for the pre-release (never latest)
+        type: string
+        default: next
+      dry_run:
+        description: Build and run npm publish --dry-run without uploading
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@grepvine/sdk
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Set package version
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+            requested=${RELEASE_TAG#v}
+          else
+            requested=${INPUT_VERSION#v}
+          fi
+          npm version --no-git-tag-version --allow-same-version "$requested"
+          version=$(node -p 'require("./package.json").version')
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          else
+            prerelease=false
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+            if [[ "$prerelease" == true || "$RELEASE_PRERELEASE" == true ]]; then
+              tag=next
+            else
+              tag=latest
+            fi
+          else
+            tag=$INPUT_TAG
+            if [[ "$prerelease" != true ]]; then
+              echo "::error::Manual runs publish only pre-release versions; publish a GitHub release for $version"
+              exit 1
+            fi
+            if [[ ! "$tag" =~ ^[a-z][a-z0-9-]*$ || "$tag" == latest ]]; then
+              echo "::error::Invalid dist-tag '$tag' for a manual pre-release"
+              exit 1
+            fi
+          fi
+          echo "Publishing @grepvine/sdk $version with dist-tag $tag (pre-release: $prerelease)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - name: Check generated files are current
+        run: |
+          npm run generate
+          git diff --exit-code -- src/generated
+      - run: npm run lint
+      - run: npm test
+      - name: Build and test installed package
+        run: |
+          npm run build
+          node scripts/check-package.mjs
+      - name: Publish to npm
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          # Optional bootstrap token; npm trusted publishing (OIDC) is used when it is unset.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          args=(--access public --tag "$TAG")
+          if [[ "$DRY_RUN" == true ]]; then
+            args+=(--dry-run)
+          fi
+          npm publish "${args[@]}"
