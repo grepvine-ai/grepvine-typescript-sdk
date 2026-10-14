@@ -1,12 +1,12 @@
 /* Grepvine docs theme, layer 3 of 3.
-   1. design-system/tokens.css  — the system's tokens, dark on :root, light on [data-theme="light"].
-   2. design-system/bundle.css  — Logo, ThemeToggle, Markdown and CodeBlock rules (and the fonts).
-   3. this file                 — maps TypeDoc's variables and classes onto those tokens.
+   1. tokens.css      — the system's tokens, dark on :root, light on [data-theme="light"].
+   2. components.css  — Logo, ThemeToggle, Markdown and CodeBlock rules (and the fonts).
+   3. this file       — maps TypeDoc's variables and classes onto those tokens.
    The plugin copies 1 and 2 next to this file. TypeDoc's own stylesheet lives in
    @layer typedoc, so these unlayered rules win without !important. */
 
-@import url("design-system/tokens.css");
-@import url("design-system/bundle.css");
+@import url("tokens.css");
+@import url("components.css");
 
 /* TypeDoc variables ------------------------------------------------------ */
 
@@ -261,7 +261,7 @@ pre > button {
   display: none;
 }
 
-/* Toolbar: Logo and ThemeToggle from bundle.css. ------------------------- */
+/* Toolbar: Logo and ThemeToggle from components.css. ------------------------- */
 
 .tsd-page-toolbar {
   background: var(--ink);

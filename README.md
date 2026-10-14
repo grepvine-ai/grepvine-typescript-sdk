@@ -153,24 +153,13 @@ and reconnection semantics.
 
 Guide and API reference: <https://grepvine-ai.github.io/grepvine-typescript-sdk/>.
 TypeDoc generates it from `src/index.ts`, with `docs/index.md` as the guide
-landing page and `typedoc.config.mjs` as its configuration.
-
-The site is styled with the Grepvine design system, which lives in its own
-repository, [`grepvine-ai/grepvine-design-system`](https://github.com/grepvine-ai/grepvine-design-system).
-Read its README for the rules the theme follows. The build reads the design
-system from a checkout of that repository at the commit pinned in
-`docs/theme/design-system.ref`; by default it expects the checkout next to this
-one, or set `GREPVINE_DESIGN_SYSTEM` to its path. Build it locally with:
+landing page. Its theme lives in `docs/theme` and follows the Grepvine design
+system in [`grepvine-ai/grepvine-design-system`](https://github.com/grepvine-ai/grepvine-design-system);
+see `docs/theme/README.md` before changing it. Build it locally with:
 
 ```sh
-git clone https://github.com/grepvine-ai/grepvine-design-system ../grepvine-design-system
-git -C ../grepvine-design-system checkout "$(cat docs/theme/design-system.ref)"
 npm run docs
 ```
-
-`docs/theme` holds the TypeDoc plugin, stylesheet and script that map
-TypeDoc's pages onto the design system's tokens and components. To adopt a
-newer design system, change the commit in `docs/theme/design-system.ref`.
 
 Open `docs/_build/index.html`; the directory is git-ignored. Warnings,
 including broken links and symbols referenced but not exported, fail the build.
@@ -237,14 +226,6 @@ request and push to `main` without deploying it. Publishing a GitHub release
 GitHub Pages, so it always documents the latest release. One-time setup: in the
 repository's Settings → Pages, set Source to GitHub Actions. GitHub Pages on a
 private repository requires a paid plan, and the published site is public.
-
-The workflow checks out the private design-system repository at the pinned
-commit, so it needs read access to it. Create an SSH key pair, add the public
-key as a read-only deploy key on `grepvine-ai/grepvine-design-system`
-(Settings → Deploy keys), and store the private key in this repository as the
-Actions secret `DESIGN_SYSTEM_DEPLOY_KEY`. GitHub accepts each deploy key on one
-repository only, but one key can be stored as a secret in several, so the
-Python and TypeScript SDK repositories can share it.
 
 The `Build and publish SDK` workflow runs the same checks, builds the
 package, and publishes it to npm. Publishing a GitHub release uploads the

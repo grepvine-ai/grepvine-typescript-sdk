@@ -1,5 +1,5 @@
 // Grepvine chrome for the TypeDoc site: the Logo in the toolbar and the
-// ThemeToggle, both using the markup and classes of design-system/bundle.css.
+// ThemeToggle, both using the markup and classes of components.css.
 //
 // TypeDoc stores the theme in localStorage under "tsd-theme" and mirrors it on
 // <html data-theme>. Its value "os" means no choice yet; the design system's
