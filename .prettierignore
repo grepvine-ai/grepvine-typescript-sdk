@@ -3,4 +3,6 @@ dist/
 src/generated/
 spec/
 docs/_build/
-.design-system/
+docs/theme/tokens.css
+docs/theme/components.css
+docs/theme/favicon.svg

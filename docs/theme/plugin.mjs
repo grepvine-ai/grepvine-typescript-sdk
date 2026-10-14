@@ -3,13 +3,14 @@
 // 1. Files under src/generated are rewritten by `npm run generate`, so they can't
 //    carry @category tags. Categories are assigned here from each export's
 //    source file instead, and an explicit @category in a comment still wins.
-// 2. The theme stylesheet imports the design-system layers
-//    (tokens.css, then components/bundle.css); they are copied next to it.
+// 2. The theme stylesheet imports tokens.css, then components.css, the
+//    design-system layers in docs/theme; they are copied next to it.
 // 3. The code-block grammar of the Grepvine design system is two colours on a
 //    dark block: keywords pink, strings lime, everything else paper, in both
 //    themes. Shiki's highlight.css is rewritten to that palette after rendering.
 import { cpSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   Comment,
   CommentTag,
@@ -17,9 +18,9 @@ import {
   ReflectionKind,
   RendererEvent,
 } from "typedoc";
-import { designSystem } from "./design-system.mjs";
 
-const layers = ["tokens.css", "components/bundle.css"];
+const theme = dirname(fileURLToPath(import.meta.url));
+const layers = ["tokens.css", "components.css"];
 
 const categories = [
   [/\/src\/convenience\.ts$/, "Convenience client"],
@@ -67,10 +68,7 @@ export function load(app) {
     (event) => {
       const assets = join(event.outputDirectory, "assets");
       for (const layer of layers) {
-        cpSync(
-          join(designSystem, layer),
-          join(assets, "design-system", layer.replace("components/", "")),
-        );
+        cpSync(join(theme, layer), join(assets, layer));
       }
 
       const path = join(assets, "highlight.css");

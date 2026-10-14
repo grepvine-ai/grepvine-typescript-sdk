@@ -20,22 +20,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Read the pinned design-system commit
-        id: design-system
-        run: echo "ref=$(cat docs/theme/design-system.ref)" >> "$GITHUB_OUTPUT"
-      # grepvine-design-system is private; DESIGN_SYSTEM_DEPLOY_KEY is a read-only deploy key on it.
-      - uses: actions/checkout@v7
-        with:
-          repository: grepvine-ai/grepvine-design-system
-          ref: ${{ steps.design-system.outputs.ref }}
-          path: .design-system
-          ssh-key: ${{ secrets.DESIGN_SYSTEM_DEPLOY_KEY }}
-          persist-credentials: false
       - run: npm ci
       # TypeDoc treats warnings as errors: broken links and missing exports fail here.
       - run: npm run docs
-        env:
-          GREPVINE_DESIGN_SYSTEM: ${{ github.workspace }}/.design-system
       - name: Upload Pages artifact
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && !github.event.release.prerelease)
         uses: actions/upload-pages-artifact@v5

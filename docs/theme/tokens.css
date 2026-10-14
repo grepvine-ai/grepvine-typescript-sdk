@@ -1,0 +1,79 @@
+/* Grepvine — generated from tokens.json. Values are the system's own. */
+
+:root {
+  --ink: #0b0b0e;
+  --ink-2: #111116;
+  --ink-3: #18181e;
+  --paper: #f1f1f4;
+  --text-2: #b9b9c6;
+  --muted: #868694;
+  --rule: #24242d;
+  --rule-strong: #393945;
+  --black: #0b0b0e;
+  --white: #f1f1f4;
+  --lime: #c4ff3d;
+  --orange: #ff8a1f;
+  --cyan: #3df0ff;
+  --pink: #ff4fd8;
+  --lime-text: var(--lime);
+  --orange-text: var(--orange);
+  --cyan-text: var(--cyan);
+  --pink-text: var(--pink);
+
+  --font-display: "Tektur", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Martian Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --text-page-title: 6.5rem;
+  --text-section-title: 3.5rem;
+  --text-figure: 2.75rem;
+  --text-card-title: 1.375rem;
+  --text-wordmark: 1.1875rem;
+  --text-lede: 1.125rem;
+  --text-body: 1rem;
+  --text-small: 0.8125rem;
+  --text-control: 0.8125rem;
+  --text-meta: 0.75rem;
+
+  --gutter: 20px;
+  --wrap: 1240px;
+  --section-y: 120px;
+  --block: 72px;
+  --stack: 56px;
+  --row: 24px;
+  --tight: 12px;
+  --radius-0: 0;
+  --radius-bubble: 12px;
+  --radius-bubble-tail: 2px;
+  --shadow-press: 4px 4px 0 #f1f1f4;
+  --shadow-press-sm: 3px 3px 0 #f1f1f4;
+  --shadow-press-hover: 2px 2px 0 #f1f1f4;
+  --shadow-panel: 8px 8px 0 #c4ff3d;
+  --border: 2px;
+}
+
+[data-theme="light"] {
+  --ink: #f4f4f7;
+  --ink-2: #e9e9ef;
+  --ink-3: #dcdce4;
+  --paper: #0b0b0e;
+  --text-2: #373743;
+  --muted: #5b5b69;
+  --rule: #d2d2db;
+  --rule-strong: #8a8a98;
+  --lime-text: #3d7400;
+  --orange-text: #b04400;
+  --cyan-text: #00717f;
+  --pink-text: #b5179b;
+  --shadow-press: 4px 4px 0 #0b0b0e;
+  --shadow-press-sm: 3px 3px 0 #0b0b0e;
+  --shadow-press-hover: 2px 2px 0 #0b0b0e;
+}
+
+/* Aliases used by components.css. */
+:root {
+  --text-base: var(--text-body);
+  --text-sm: var(--text-small);
+  --text-xs: var(--text-meta);
+  --text-fig: var(--text-figure);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
