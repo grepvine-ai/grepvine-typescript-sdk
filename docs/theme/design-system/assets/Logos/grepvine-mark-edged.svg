@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
+  <g stroke="#0b0b0e" stroke-width="1.2" stroke-linejoin="miter">
+    <rect x="2.5" y="4" width="27" height="4.5"/>
+    <rect x="2.5" y="10.5" width="8" height="4.5"/>
+    <rect x="12.5" y="10.5" width="9" height="4.5"/>
+    <rect x="23.5" y="10.5" width="6" height="4.5"/>
+    <rect x="2.5" y="17" width="8" height="4.5"/>
+    <rect x="12.5" y="17" width="7" height="4.5"/>
+    <rect x="2.5" y="23.5" width="5.5" height="4.5"/>
+    <rect x="10" y="23.5" width="4.5" height="4.5"/>
+  </g>
+  <rect x="2.5" y="4" width="27" height="4.5" fill="#c4ff3d"/>
+  <rect x="2.5" y="10.5" width="8" height="4.5" fill="#c4ff3d"/>
+  <rect x="12.5" y="10.5" width="9" height="4.5" fill="#ff4fd8"/>
+  <rect x="23.5" y="10.5" width="6" height="4.5" fill="#c4ff3d"/>
+  <rect x="2.5" y="17" width="8" height="4.5" fill="#c4ff3d"/>
+  <rect x="12.5" y="17" width="7" height="4.5" fill="#c4ff3d"/>
+  <rect x="2.5" y="23.5" width="5.5" height="4.5" fill="#c4ff3d"/>
+  <rect x="10" y="23.5" width="4.5" height="4.5" fill="#c4ff3d"/>
+</svg>
