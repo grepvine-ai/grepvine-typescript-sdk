@@ -35,6 +35,14 @@
   "sort": ["kind", "alphabetical-ignoring-documents"],
   "excludePrivate": true,
   "excludeInternal": true,
+  "excludeProtected": true,
+  "intentionallyNotExported": [
+    "src/generated/client/types.gen.ts:Client",
+    "src/generated/client/types.gen.ts:Options",
+    "src/generated/client/types.gen.ts:RequestResult",
+    "src/generated/client/types.gen.ts:TDataShape",
+    "src/generated/core/types.gen.ts:ClientMeta"
+  ],
   "externalSymbolLinkMappings": {
     "typescript": {
       "Body": "https://developer.mozilla.org/docs/Web/API/Response#instance_methods",
