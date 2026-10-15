@@ -29,38 +29,56 @@ try {
     script,
     `
 import assert from "node:assert/strict";
-import { createGrepvineClient, queryIndex, putObjects } from "@grepvine/sdk";
 import * as sdk from "@grepvine/sdk";
-for (const operation of ["registerUser", "getUsernameAvailability", "login", "logout", "getCurrentUser", "changePassword", "startDeviceAuthorization", "approveDeviceAuthorization", "denyDeviceAuthorization", "pollDeviceToken", "listApiKeys", "createApiKey", "revokeApiKey", "listOrganizations", "createOrganization", "getOrganization", "deleteOrganization", "listOrganizationMembers", "addOrganizationMember", "updateOrganizationMember", "removeOrganizationMember", "transferOrganizationOwnership", "listIndexes", "createIndex", "getIndex", "updateIndex", "deleteIndex", "listDocuments", "putDocument", "getDocument", "deleteDocument", "putObjects", "deleteObjects", "queryIndex"]) {
-  assert.equal(typeof sdk[operation], "function");
+import { GrepvineClient, NotFoundError, PartialBatchError, RetryPolicy } from "@grepvine/sdk";
+
+for (const name of ["createGrepvineClient", "createClient", "createConfig", "putObjects", "queryIndex", "listOrganizations"]) {
+  assert.equal(name in sdk, false, name + " must not be exported");
 }
-assert.equal(typeof sdk.startDeviceAuthorization, "function");
-assert.equal(typeof sdk.pollDeviceToken, "function");
-let captured;
-const client = createGrepvineClient({ apiKey: "gvk", fetch: async (request) => {
-  captured = request;
-  return Response.json({ results: [], pagination: { has_next: false, next_page_id: "" } });
-}});
-assert.equal((await queryIndex({ client, path: { organization: "acme", index: "notes" }, body: { pattern: "hello" } })).data.pagination.has_next, false);
-assert.equal(captured.headers.get("Authorization"), "Bearer gvk");
-assert.equal(captured.headers.get("Cookie"), null);
-await putObjects({ client, path: { organization: "acme", index: "notes" }, body: '{"key":"a","content":"hello"}\\n', headers: { "Idempotency-Key": "stable-operation-123" } });
-assert.equal(await captured.text(), '{"key":"a","content":"hello"}\\n');
-const convenience = new sdk.GrepvineClient({ apiKey: "gvk", fetch: async (request) => {
-  assert.equal(request.headers.get("Authorization"), "Bearer gvk");
-  if (request.url.endsWith("objects:batch")) {
-    const record = JSON.parse((await request.text()).trim());
-    assert.deepEqual(record.metadata.kind, { type: "string", value: "guide" });
-    return Response.json({ results: [{ key: "a", revision: "r1" }] });
-  }
-  return Response.json({ results: [], pagination: { has_next: false, next_page_id: "" } });
-}});
-const index = convenience.indexes.get("acme/docs");
-assert.equal((await index.documents.putMany([{ key: "a", content: "hello", metadata: { kind: "guide" } }]))[0].revision, "r1");
+
+const seen = [];
+const client = new GrepvineClient({
+  apiKey: "gvk",
+  endpoint: "http://grepvine.test",
+  env: {},
+  retry: new RetryPolicy({ backoff: [1] }),
+  fetch: async (request, init) => {
+    request = new Request(request, init);
+    seen.push(request);
+    assert.equal(request.headers.get("Authorization"), "Bearer gvk");
+    assert.equal(request.headers.get("Cookie"), null);
+    const url = new URL(request.url);
+    if (url.pathname === "/v1/organizations/acme/indexes/docs") {
+      return Response.json({ id: "i", organization: "acme", name: "docs", canonical_id: "i", description: "", tags: {}, state: "ready", document_count: 0, content_bytes: 0, created_at: "2026-01-01T00:00:00Z" });
+    }
+    if (url.pathname.endsWith("objects:batch")) {
+      const record = JSON.parse((await request.text()).trim());
+      assert.deepEqual(record.metadata.kind, { type: "string", value: "guide" });
+      assert.deepEqual(record.metadata.path, { type: "string", value: "a" });
+      return Response.json({ results: [{ key: "a", revision: "r1" }] });
+    }
+    if (url.pathname.endsWith("/query")) {
+      if (!url.searchParams.get("page")) {
+        return Response.json({ results: [], pagination: { has_next: true, next_page_id: "p2" } });
+      }
+      return Response.json({ results: [{ key: "a", revision: "r1", line_number: 1, last_line_number: 1, line_start_offset: 0, line_end_offset: 5, text_start_offset: 0, text_line_number: 1, text: "hello", matches: [{ offset: 0, length: 5 }], text_truncated: false, matches_truncated: false }], pagination: { has_next: false, next_page_id: "" } });
+    }
+    return Response.json({ code: "not_found", reason: "resource", error: "missing" }, { status: 404, headers: { "X-Request-ID": "req-1" } });
+  },
+});
+const index = await client.indexes.get("acme/docs");
+const [stored] = await index.documents.put([{ key: "a", content: "hello", metadata: { kind: "guide" } }]);
+assert.equal(stored.revision, "r1");
+assert.equal(stored.ok, true);
 const hits = [];
-for await (const hit of index.search("hello")) hits.push(hit);
-assert.deepEqual(hits, []);
-console.log("Installed npm raw and convenience requests passed");
+for await (const hit of index.search("hello")) hits.push(hit.matchTexts()[0]);
+assert.deepEqual(hits, ["hello"]);
+const error = await client.organizations.get("none").catch((e) => e);
+assert.ok(error instanceof NotFoundError);
+assert.equal(error.requestId, "req-1");
+assert.equal(typeof PartialBatchError, "function");
+assert.equal((await client.http("/organizations/none")).status, 404);
+console.log("Installed npm package requests passed");
 `,
   );
   execFileSync(process.execPath, [script], {
