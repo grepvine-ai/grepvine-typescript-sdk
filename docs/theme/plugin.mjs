@@ -1,8 +1,9 @@
 // Local TypeDoc plugin for the Grepvine SDK site.
 //
-// 1. Files under src/generated are rewritten by `npm run generate`, so they can't
-//    carry @category tags. Categories are assigned here from each export's
-//    source file instead, and an explicit @category in a comment still wins.
+// 1. The reference is organized by resource. Each export's @category comes
+//    from its comment, or else from its source file: a resource class, and
+//    the request and response types of an operation, go under the resource of
+//    sdk-operations.json; other API types go under Models.
 // 2. The theme stylesheet imports tokens.css, then components.css, the
 //    design-system layers in docs/theme; they are copied next to it.
 // 3. The code-block grammar of the Grepvine design system is two colours on a
@@ -23,12 +24,52 @@ const theme = dirname(fileURLToPath(import.meta.url));
 const layers = ["tokens.css", "components.css"];
 
 const categories = [
-  [/\/src\/convenience\.ts$/, "Convenience client"],
-  [/\/src\/helpers\.ts$/, "Raw client"],
-  [/\/src\/generated\/(client|core)\//, "Raw client"],
-  [/\/src\/generated\/sdk\.gen\.ts$/, "Operations"],
-  [/\/src\/generated\/types\.gen\.ts$/, "API types"],
+  [/\/src\/(client|retry|paginate)\.ts$/, "Client"],
+  [/\/src\/errors\.ts$/, "Errors"],
 ];
+const resources = {
+  organizations: "Organizations",
+  indexes: "Indexes",
+  documents: "Documents",
+  search: "Search",
+  apiKeys: "API keys",
+  account: "Account",
+  deviceLogin: "Device login",
+};
+const classes = {
+  GrepvineApi: "Client",
+  Options: "Client",
+  Members: "Organizations",
+  ...Object.fromEntries(
+    Object.entries(resources).map(([name, label]) => [
+      name[0].toUpperCase() + name.slice(1),
+      label,
+    ]),
+  ),
+};
+// Operation type names (ListApiKeysData) differ in case from operation IDs
+// (listAPIKeys), so they are compared in lower case.
+const operations = new Map(
+  Object.entries(
+    JSON.parse(
+      readFileSync(new URL("../../sdk-operations.json", import.meta.url)),
+    ),
+  ).map(([operationId, path]) => [
+    operationId.toLowerCase(),
+    resources[path[0]],
+  ]),
+);
+const operationType = /^(\w+?)(Data|Errors|Error|Responses|Response)$/;
+
+/** The category of an export without a @category tag, by its source file. */
+function category(name, file) {
+  if (file.endsWith("/src/generated/sdk.gen.ts")) return classes[name];
+  if (file.endsWith("/src/generated/types.gen.ts")) {
+    const match = operationType.exec(name);
+    return (match && operations.get(match[1].toLowerCase())) ?? "Models";
+  }
+  return categories.find(([pattern]) => pattern.test(file))?.[1];
+}
 
 // Colours of the github-dark Shiki theme that typedoc.json pins.
 const KEYWORD = "#F97583";
@@ -49,13 +90,23 @@ export function load(app) {
         ReflectionKind.SomeExport,
       );
       for (const reflection of exported) {
-        if (reflection.comment?.getTag("@category")) continue;
+        // Resources are reached through the client, never constructed, and
+        // the client's instance registry is internal.
+        for (const child of reflection.children ?? []) {
+          const internal =
+            child.name === "__registry" ||
+            (child.kindOf(ReflectionKind.Constructor) &&
+              reflection.name in classes &&
+              reflection.name !== "GrepvineApi");
+          if (internal) context.project.removeReflection(child);
+        }
         const file = reflection.sources?.[0]?.fullFileName ?? "";
-        const match = categories.find(([pattern]) => pattern.test(file));
-        if (!match) continue;
+        if (reflection.comment?.getTag("@category")) continue;
+        const label = category(reflection.name, file);
+        if (!label) continue;
         reflection.comment ??= new Comment();
         reflection.comment.blockTags.push(
-          new CommentTag("@category", [{ kind: "text", text: match[1] }]),
+          new CommentTag("@category", [{ kind: "text", text: label }]),
         );
       }
     },

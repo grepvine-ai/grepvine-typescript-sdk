@@ -1,19 +1,41 @@
-export * from "./generated/index.js";
-export { createConfig } from "./generated/client/index.js";
-export { createGrepvineClient, putObjects } from "./helpers.js";
-export { createClient } from "./generated/client/index.js";
-export type { Client, Config, Auth } from "./generated/client/index.js";
-
+export { GrepvineClient, type GrepvineClientOptions } from "./client.js";
 export {
-  GrepvineClient,
-  IndexHandle,
-  ApiError,
-  BatchError,
-} from "./convenience.js";
-export type {
-  Document,
+  Account,
+  ApiKeys,
+  Members,
+  Organizations,
+  Search,
+  type Options,
+} from "./generated/sdk.gen.js";
+export {
+  DeviceLogin,
   Documents,
   Indexes,
-  MetadataInput,
-  SearchOptions,
-} from "./convenience.js";
+  type DocumentInput,
+} from "./resources.js";
+export {
+  paginate,
+  type Page,
+  type PageItem,
+  type PageMethod,
+} from "./paginate.js";
+export { RetryPolicy, type RetryPolicyOptions } from "./retry.js";
+export {
+  APIError,
+  AuthenticationError,
+  ConfigurationError,
+  ConflictError,
+  GrepvineError,
+  InvalidPageError,
+  InvalidRequestError,
+  NotFoundError,
+  PartialBatchError,
+  PayloadTooLargeError,
+  PermissionDeniedError,
+  PreconditionFailedError,
+  RangeNotSatisfiableError,
+  RateLimitedError,
+  ServerError,
+  TransportError,
+} from "./errors.js";
+export type * from "./generated/types.gen.js";

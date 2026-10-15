@@ -461,7 +461,11 @@ export type IfMatch = string;
 export type IfNoneMatch = "*";
 
 export type RegisterUserData = {
-  body: RegisterRequest;
+  body: {
+    name: Name;
+    email: string;
+    password: string;
+  };
   path?: never;
   query?: never;
   url: "/auth/register";
@@ -520,7 +524,13 @@ export type GetUsernameAvailabilityResponse =
   GetUsernameAvailabilityResponses[keyof GetUsernameAvailabilityResponses];
 
 export type LoginData = {
-  body: LoginRequest;
+  body: {
+    /**
+     * A username or an email address, matched case-insensitively.
+     */
+    identifier: string;
+    password: string;
+  };
   path?: never;
   query?: never;
   url: "/auth/login";
@@ -550,12 +560,6 @@ export type LoginResponse = LoginResponses[keyof LoginResponses];
 
 export type LogoutData = {
   body?: never;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
-  };
   path?: never;
   query?: never;
   url: "/auth/logout";
@@ -611,12 +615,9 @@ export type GetCurrentUserResponse =
   GetCurrentUserResponses[keyof GetCurrentUserResponses];
 
 export type ChangePasswordData = {
-  body: ChangePasswordRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    current_password: string;
+    new_password: string;
   };
   path?: never;
   query?: never;
@@ -648,7 +649,9 @@ export type ChangePasswordResponse =
   ChangePasswordResponses[keyof ChangePasswordResponses];
 
 export type StartDeviceAuthorizationData = {
-  body: DeviceAuthorizationRequest;
+  body: {
+    api_key_name: string;
+  };
   path?: never;
   query?: never;
   url: "/device/authorizations";
@@ -675,12 +678,8 @@ export type StartDeviceAuthorizationResponse =
   StartDeviceAuthorizationResponses[keyof StartDeviceAuthorizationResponses];
 
 export type ApproveDeviceAuthorizationData = {
-  body: DeviceDecisionRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    user_code: string;
   };
   path?: never;
   query?: never;
@@ -712,12 +711,8 @@ export type ApproveDeviceAuthorizationResponse =
   ApproveDeviceAuthorizationResponses[keyof ApproveDeviceAuthorizationResponses];
 
 export type DenyDeviceAuthorizationData = {
-  body: DeviceDecisionRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    user_code: string;
   };
   path?: never;
   query?: never;
@@ -749,7 +744,9 @@ export type DenyDeviceAuthorizationResponse =
   DenyDeviceAuthorizationResponses[keyof DenyDeviceAuthorizationResponses];
 
 export type PollDeviceTokenData = {
-  body: DeviceTokenRequest;
+  body: {
+    device_code: string;
+  };
   path?: never;
   query?: never;
   url: "/device/token";
@@ -809,12 +806,8 @@ export type ListApiKeysResponse =
   ListApiKeysResponses[keyof ListApiKeysResponses];
 
 export type CreateApiKeyData = {
-  body: CreateApiKeyRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    name: string;
   };
   path?: never;
   query?: never;
@@ -842,12 +835,6 @@ export type CreateApiKeyResponse =
 
 export type RevokeApiKeyData = {
   body?: never;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
-  };
   path: {
     api_key_id: string;
   };
@@ -909,12 +896,8 @@ export type ListOrganizationsResponse =
   ListOrganizationsResponses[keyof ListOrganizationsResponses];
 
 export type CreateOrganizationData = {
-  body: CreateOrganizationRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    name: Name;
   };
   path?: never;
   query?: never;
@@ -947,12 +930,6 @@ export type CreateOrganizationResponse =
 
 export type DeleteOrganizationData = {
   body?: never;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
-  };
   path: {
     organization: Name;
   };
@@ -1047,12 +1024,9 @@ export type ListOrganizationMembersResponse =
   ListOrganizationMembersResponses[keyof ListOrganizationMembersResponses];
 
 export type AddOrganizationMemberData = {
-  body: AddMemberRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    user: Name;
+    role: "admin" | "developer" | "reader";
   };
   path: {
     organization: Name;
@@ -1083,12 +1057,6 @@ export type AddOrganizationMemberResponse =
 
 export type RemoveOrganizationMemberData = {
   body?: never;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
-  };
   path: {
     organization: Name;
     user: Name;
@@ -1118,12 +1086,8 @@ export type RemoveOrganizationMemberResponse =
   RemoveOrganizationMemberResponses[keyof RemoveOrganizationMemberResponses];
 
 export type UpdateOrganizationMemberData = {
-  body: UpdateMemberRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    role: "admin" | "developer" | "reader";
   };
   path: {
     organization: Name;
@@ -1154,12 +1118,8 @@ export type UpdateOrganizationMemberResponse =
   UpdateOrganizationMemberResponses[keyof UpdateOrganizationMemberResponses];
 
 export type TransferOrganizationOwnershipData = {
-  body: TransferOwnershipRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    user: Name;
   };
   path: {
     organization: Name;
@@ -1224,12 +1184,10 @@ export type ListIndexesResponse =
   ListIndexesResponses[keyof ListIndexesResponses];
 
 export type CreateIndexData = {
-  body: CreateIndexRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    name: IndexName;
+    description?: IndexDescription;
+    tags?: IndexTags;
   };
   path: {
     organization: Name;
@@ -1263,12 +1221,6 @@ export type CreateIndexResponse =
 
 export type DeleteIndexData = {
   body?: never;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
-  };
   path: {
     organization: Name;
     index: IndexName;
@@ -1330,12 +1282,12 @@ export type GetIndexResponses = {
 export type GetIndexResponse = GetIndexResponses[keyof GetIndexResponses];
 
 export type UpdateIndexData = {
-  body: UpdateIndexRequest;
-  headers?: {
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  /**
+   * The fields to change. A field that is absent is left as it is; at least one must be present.
+   */
+  body: {
+    description?: IndexDescription;
+    tags?: IndexTagChanges;
   };
   path: {
     organization: Name;
@@ -1406,15 +1358,21 @@ export type ListDocumentsResponse =
   ListDocumentsResponses[keyof ListDocumentsResponses];
 
 export type PutDocumentData = {
-  body: PutDocumentForm;
-  headers: {
-    "Idempotency-Key": string;
+  body: {
+    key: string;
+    /**
+     * A Metadata JSON object.
+     */
+    metadata?: string;
+    /**
+     * The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is stored without being searchable.
+     */
+    content: Blob | File;
+  };
+  headers?: {
+    "Idempotency-Key"?: string;
     "If-Match"?: string;
     "If-None-Match"?: "*";
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
   };
   path: {
     organization: Name;
@@ -1453,13 +1411,9 @@ export type PutDocumentResponse =
 
 export type DeleteDocumentData = {
   body?: never;
-  headers: {
-    "Idempotency-Key": string;
+  headers?: {
+    "Idempotency-Key"?: string;
     "If-Match"?: string;
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
   };
   path: {
     organization: Name;
@@ -1551,12 +1505,8 @@ export type PutObjectsData = {
    * One PutObjectRecord JSON value per line; at most 2,048 records and 16 MiB of combined object content.
    */
   body: string;
-  headers: {
-    "Idempotency-Key": string;
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  headers?: {
+    "Idempotency-Key"?: string;
   };
   path: {
     organization: Name;
@@ -1589,13 +1539,11 @@ export type PutObjectsResponses = {
 export type PutObjectsResponse = PutObjectsResponses[keyof PutObjectsResponses];
 
 export type DeleteObjectsData = {
-  body: DeleteObjectsRequest;
-  headers: {
-    "Idempotency-Key": string;
-    /**
-     * Required for a state change that uses cookie authentication.
-     */
-    "X-Csrf-Token"?: string;
+  body: {
+    objects: Array<DeleteObjectRecord>;
+  };
+  headers?: {
+    "Idempotency-Key"?: string;
   };
   path: {
     organization: Name;
@@ -1625,7 +1573,25 @@ export type DeleteObjectsResponse =
   DeleteObjectsResponses[keyof DeleteObjectsResponses];
 
 export type QueryIndexData = {
-  body: QueryRequest;
+  body: {
+    pattern: string;
+    mode?: "regex" | "literal";
+    case_sensitive?: boolean;
+    whole_word?: boolean;
+    /**
+     * Let a match span lines. Without it a pattern matches within one line, `^` and `$` mark the line's edges, and a character class never matches a line break; a pattern that contains a line break is rejected. With it the pattern is matched against the whole document, `^` and `$` still mark line edges, `\A` and `\z` mark the document's edges, and a match may contain line breaks.
+     */
+    multiline?: boolean;
+    filter?: string;
+    /**
+     * How many lines before each result to return with it, from the same document.
+     */
+    lines_before?: number;
+    /**
+     * How many lines after each result to return with it, from the same document.
+     */
+    lines_after?: number;
+  };
   path: {
     organization: Name;
     index: IndexName;
