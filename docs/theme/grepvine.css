@@ -1,0 +1,452 @@
+/* Grepvine docs theme, layer 3 of 3.
+   1. tokens.css      — the system's tokens, dark on :root, light on [data-theme="light"].
+   2. components.css  — Logo, ThemeToggle, Markdown and CodeBlock rules (and the fonts).
+   3. this file       — maps TypeDoc's variables and classes onto those tokens.
+   The plugin copies 1 and 2 next to this file. TypeDoc's own stylesheet lives in
+   @layer typedoc, so these unlayered rules win without !important. */
+
+@import url("tokens.css");
+@import url("components.css");
+
+/* TypeDoc variables ------------------------------------------------------ */
+
+:root {
+  --color-scheme: dark;
+  --color-background: var(--ink);
+  --color-background-secondary: var(--ink-2);
+  --color-background-active: var(--ink-3);
+  --color-background-warning: var(--orange);
+  --color-warning-text: var(--black);
+  --color-accent: var(--rule-strong);
+  --color-active-menu-item: var(--ink-3);
+  --color-text: var(--text-2);
+  --color-contrast-text: var(--paper);
+  --color-text-aside: var(--muted);
+  --color-icon-background: var(--ink-2);
+  --color-icon-text: var(--paper);
+  --color-comment-tag-text: var(--paper);
+  --color-comment-tag: var(--ink-3);
+  --color-link: var(--lime-text);
+  --color-focus-outline: var(--lime-text);
+
+  /* Kinds keep to paper and the lead accent; the other neons stay reserved. */
+  --color-ts-keyword: var(--lime-text);
+  --color-ts-project: var(--lime-text);
+  --color-ts-module: var(--lime-text);
+  --color-ts-namespace: var(--lime-text);
+  --color-ts-enum: var(--paper);
+  --color-ts-enum-member: var(--paper);
+  --color-ts-variable: var(--paper);
+  --color-ts-function: var(--lime-text);
+  --color-ts-class: var(--lime-text);
+  --color-ts-interface: var(--lime-text);
+  --color-ts-constructor: var(--lime-text);
+  --color-ts-property: var(--paper);
+  --color-ts-method: var(--lime-text);
+  --color-ts-reference: var(--lime-text);
+  --color-ts-call-signature: var(--lime-text);
+  --color-ts-index-signature: var(--paper);
+  --color-ts-constructor-signature: var(--lime-text);
+  --color-ts-parameter: var(--paper);
+  --color-ts-type-parameter: var(--paper);
+  --color-ts-accessor: var(--paper);
+  --color-ts-get-signature: var(--paper);
+  --color-ts-set-signature: var(--paper);
+  --color-ts-type-alias: var(--lime-text);
+  --color-document: var(--paper);
+
+  --color-alert-note: var(--lime-text);
+  --color-alert-tip: var(--lime-text);
+  --color-alert-important: var(--lime-text);
+  --color-alert-warning: var(--orange-text);
+  --color-alert-caution: var(--orange-text);
+
+  --code-background: var(--black);
+  --dim-toolbar-contents-height: 3.5rem;
+  --dim-toolbar-border-bottom-width: var(--border);
+}
+
+[data-theme="light"] {
+  --color-scheme: light;
+}
+
+/* Base: the page reads as a markdown document set in the mono. ----------- */
+
+*,
+*::before,
+*::after {
+  border-radius: var(--radius-0) !important;
+}
+
+body {
+  background: var(--ink);
+  color: var(--text-2);
+  font-family: var(--font-body);
+  font-stretch: 87.5%;
+  font-weight: 400;
+  font-size: var(--text-small);
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-stretch: 100%;
+  font-weight: 700;
+  color: var(--paper);
+  text-rendering: optimizeLegibility;
+  text-wrap: balance;
+}
+
+h4,
+h5,
+h6 {
+  font-family: var(--font-body);
+  font-stretch: 87.5%;
+  font-weight: 500;
+}
+
+.tsd-page-title h1,
+.tsd-typography h1 {
+  font-size: clamp(2rem, 1.2rem + 2.8vw, var(--text-section-title));
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.tsd-typography h2,
+.tsd-panel-group > details > summary h2,
+.tsd-panel-group > h2 {
+  font-size: 1.75rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.tsd-typography h3,
+.tsd-panel h3,
+.tsd-member > h3 {
+  font-size: var(--text-card-title);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+code,
+pre,
+input,
+select,
+button {
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--lime);
+  color: var(--black);
+}
+
+:focus-visible {
+  outline: 2px solid var(--lime-text);
+  outline-offset: 3px;
+}
+
+a {
+  color: var(--lime-text);
+}
+
+.tsd-typography a:not(.tsd-anchor-icon) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* Outbound links end in an arrow character, not an icon. */
+a.external::after {
+  content: " ↗";
+  content: " ↗" / "";
+  background: none;
+  mask: none;
+  -webkit-mask: none;
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+/* Markdown theme: heading markers and star bullets, as in components/Markdown.
+   Pseudo-elements with empty alt text, so the markers are never announced. */
+
+.tsd-page-title h1::before,
+.tsd-typography h1::before,
+.tsd-typography h2::before,
+.tsd-typography h3::before {
+  color: var(--lime);
+}
+
+[data-theme="light"]
+  :is(.tsd-page-title, .tsd-typography)
+  :is(h1, h2, h3)::before {
+  -webkit-text-stroke: max(2px, 0.06em) var(--black);
+  paint-order: stroke fill;
+}
+
+.tsd-page-title h1::before,
+.tsd-typography h1::before {
+  content: "# ";
+  content: "# " / "";
+}
+
+.tsd-typography h2::before {
+  content: "## ";
+  content: "## " / "";
+}
+
+.tsd-typography h3::before {
+  content: "### ";
+  content: "### " / "";
+}
+
+.tsd-typography ul,
+.tsd-parameter-list,
+.tsd-type-parameter-list {
+  list-style: none;
+  padding-left: 2ch;
+}
+
+.tsd-typography ul > li,
+.tsd-parameter-list > li,
+.tsd-type-parameter-list > li {
+  position: relative;
+}
+
+.tsd-typography ul > li::before,
+.tsd-parameter-list > li:not(.tsd-parameter-signature)::before,
+.tsd-type-parameter-list > li:not(.tsd-parameter-signature)::before {
+  content: "*";
+  content: "*" / "";
+  position: absolute;
+  left: -2ch;
+  color: var(--lime-text);
+}
+
+.tsd-typography :not(pre) > code,
+.tsd-comment :not(pre) > code {
+  background: var(--ink-3);
+  color: var(--paper);
+  padding: 0.1em 0.35em;
+  font-size: 0.92em;
+}
+
+/* CodeBlock: dark in both themes, pink keywords, lime strings, paper for the
+   rest (the plugin rewrites Shiki's colours), no window chrome, no copy button. */
+
+pre {
+  background: var(--black);
+  color: var(--white);
+  border: var(--border) solid var(--rule-strong);
+  padding: 28px;
+  overflow-x: auto;
+  font-size: var(--text-small);
+  line-height: 1.75;
+}
+
+pre ::selection {
+  background: var(--lime);
+  color: var(--black);
+}
+
+pre > button {
+  display: none;
+}
+
+/* Toolbar: Logo and ThemeToggle from components.css. ------------------------- */
+
+.tsd-page-toolbar {
+  background: var(--ink);
+  border-bottom: var(--border) solid var(--rule-strong);
+}
+
+.tsd-toolbar-contents {
+  gap: var(--tight);
+}
+
+.tsd-page-toolbar .title.logo {
+  font-size: var(--text-wordmark);
+  white-space: nowrap;
+}
+
+.logo-mark .lime {
+  fill: var(--lime);
+}
+
+.logo-mark .pink {
+  fill: var(--pink);
+}
+
+.logo-edge {
+  fill: none;
+  stroke: var(--black);
+  stroke-width: 1.2;
+}
+
+.logo-sub {
+  font-family: var(--font-body);
+  font-stretch: 87.5%;
+  font-weight: 400;
+  font-size: var(--text-meta);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+#tsd-toolbar-links a {
+  color: var(--muted);
+  font-size: var(--text-meta);
+  text-decoration: none;
+  transition: color 200ms var(--ease);
+}
+
+#tsd-toolbar-links a:hover {
+  color: var(--lime-text);
+}
+
+#tsd-toolbar-links a::after {
+  content: " ↗";
+  content: " ↗" / "";
+}
+
+.tsd-widget {
+  color: var(--paper);
+}
+
+.theme-toggle {
+  align-self: center;
+}
+
+/* One theme control: the ThemeToggle replaces TypeDoc's theme select. */
+.tsd-theme-toggle {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .logo-sub {
+    display: none;
+  }
+}
+
+/* Panels, members and navigation ----------------------------------------- */
+
+.tsd-panel,
+.tsd-panel-group,
+.tsd-navigation,
+.tsd-page-navigation,
+.site-menu {
+  background: transparent;
+}
+
+.tsd-panel-group > details > summary,
+.tsd-index-panel h3 {
+  border-bottom: var(--border) solid var(--rule-strong);
+}
+
+.tsd-member {
+  border-top: 1px solid var(--rule);
+}
+
+.tsd-signature,
+.tsd-signatures .tsd-signature {
+  background: var(--ink-2);
+  border: 1px solid var(--rule-strong);
+  color: var(--paper);
+  font-size: var(--text-small);
+}
+
+.tsd-signature-keyword {
+  color: var(--muted);
+}
+
+.tsd-signature-type {
+  color: var(--paper);
+  font-style: normal;
+}
+
+.tsd-kind-icon ~ span,
+.tsd-navigation a,
+.tsd-page-navigation a,
+.tsd-index-link {
+  color: var(--text-2);
+}
+
+.tsd-navigation a:hover,
+.tsd-page-navigation a:hover,
+.tsd-index-link:hover {
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.tsd-navigation a.current,
+.tsd-page-navigation a.current {
+  background: var(--ink-3);
+  color: var(--paper);
+  box-shadow: inset var(--border) 0 0 var(--lime-text);
+}
+
+.tsd-accordion-summary,
+.tsd-accordion-summary h3,
+.tsd-accordion-summary h5,
+.tsd-filter-visibility h4,
+.settings-label {
+  font-family: var(--font-body);
+  font-stretch: 87.5%;
+  font-weight: 500;
+  font-size: var(--text-meta);
+  color: var(--muted);
+}
+
+/* Search opens as a panel with the 8px hard shadow; no blur anywhere. */
+#tsd-search {
+  background: var(--ink-2);
+  border: var(--border) solid var(--rule-strong);
+  box-shadow: var(--shadow-panel);
+}
+
+#tsd-search-input {
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--rule-strong);
+}
+
+#tsd-search-results > li.selected,
+#tsd-search-results > li:hover {
+  background: var(--ink-3);
+}
+
+#tsd-search-results mark,
+.tsd-typography mark {
+  background: var(--lime);
+  color: var(--black);
+}
+
+.tsd-generator {
+  border-top: var(--border) solid var(--rule-strong);
+  color: var(--muted);
+  font-size: var(--text-meta);
+}
+
+/* Long generated names and signatures wrap instead of widening the page. */
+.col-content,
+.tsd-signature,
+.tsd-typography {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

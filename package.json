@@ -23,15 +23,17 @@
     "lint": "tsc --noEmit && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "docs": "typedoc",
     "example:ingest-search": "npm run build && node examples/ingest-search.ts",
     "example:convenience": "npm run build && node examples/convenience.ts"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.99.0",
-    "typescript": "5.9.3",
+    "@types/node": "26.4.1",
     "prettier": "3.9.6",
-    "vitest": "4.1.11",
-    "@types/node": "26.4.1"
+    "typedoc": "0.28.20",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
   },
   "overrides": {
     "js-yaml": "4.3.2"

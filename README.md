@@ -149,6 +149,21 @@ no REST SSE operation. This SDK does not add a streaming search endpoint.
 A future SSE operation requires an API/server change and defined event
 and reconnection semantics.
 
+## Documentation
+
+Guide and API reference: <https://grepvine-ai.github.io/grepvine-typescript-sdk/>.
+TypeDoc generates it from `src/index.ts`, with `docs/index.md` as the guide
+landing page. Its theme lives in `docs/theme` and follows the Grepvine design
+system in [`grepvine-ai/grepvine-design-system`](https://github.com/grepvine-ai/grepvine-design-system);
+see `docs/theme/README.md` before changing it. Build it locally with:
+
+```sh
+npm run docs
+```
+
+Open `docs/_build/index.html`; the directory is git-ignored. Warnings,
+including broken links and symbols referenced but not exported, fail the build.
+
 ## Development
 
 From the SDK repository root:
@@ -204,6 +219,13 @@ regenerates from the snapshot, runs tests and builds an installed-package
 smoke test, then commits generated changes after the checks pass. Pushes and
 pull requests validate reproducibility without committing. Grepvine’s manual `Update SDK snapshots` workflow
 updates both repositories and requests regeneration.
+
+The `Build and publish docs` workflow builds the documentation on every pull
+request and push to `main` without deploying it. Publishing a GitHub release
+(not a pre-release), or running the workflow manually, also deploys the site to
+GitHub Pages, so it always documents the latest release. One-time setup: in the
+repository's Settings → Pages, set Source to GitHub Actions. GitHub Pages on a
+private repository requires a paid plan, and the published site is public.
 
 The `Build and publish SDK` workflow runs the same checks, builds the
 package, and publishes it to npm. Publishing a GitHub release uploads the
