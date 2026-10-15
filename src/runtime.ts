@@ -45,8 +45,6 @@ export interface RuntimeOptions {
   timeout?: number;
   retry?: RetryPolicy;
   fetch?: typeof fetch;
-  configPath?: string;
-  env?: Record<string, string | undefined>;
 }
 
 export const DEFAULT_TIMEOUT = 60_000;

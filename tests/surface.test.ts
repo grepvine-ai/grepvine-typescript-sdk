@@ -76,7 +76,7 @@ it("arranges errors in the same hierarchy as the Python SDK", () => {
 });
 
 it("exposes every resource on the client", () => {
-  const client = new sdk.GrepvineClient({ apiKey: "k", env: {} });
+  const client = new sdk.GrepvineClient({ apiKey: "k" });
   expect(client.organizations).toBeInstanceOf(sdk.Organizations);
   expect(client.organizations.members("acme")).toBeInstanceOf(sdk.Members);
   expect(client.indexes).toBeInstanceOf(sdk.Indexes);

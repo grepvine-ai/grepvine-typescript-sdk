@@ -181,7 +181,6 @@ describe("retries", () => {
     const client = new GrepvineClient({
       apiKey: API_KEY,
       endpoint: ENDPOINT,
-      env: {},
       fetch: slow,
       timeout: 20,
       retry: new RetryPolicy({ maxAttempts: 2, backoff: [1] }),
@@ -201,16 +200,14 @@ describe("retries", () => {
     const fake = new FakeGrepvine();
     const client = new GrepvineClient({
       endpoint: ENDPOINT,
-      env: {},
       fetch: fake.fetch,
-      configPath: "/nonexistent/config.yaml",
     });
     const error = await client.organizations
       .list()
       .first()
       .catch((e) => e);
     expect(error).toBeInstanceOf(ConfigurationError);
-    expect(error.message).toContain("gv login");
+    expect(error.message).toContain("pass apiKey");
     expect(fake.log).toHaveLength(0);
   });
 });

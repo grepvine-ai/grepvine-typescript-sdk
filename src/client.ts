@@ -20,10 +20,6 @@ export interface GrepvineClientOptions {
   retry?: RetryPolicy;
   /** The `fetch` to send requests with. Default `globalThis.fetch`. */
   fetch?: typeof fetch;
-  /** Another configuration file to read instead of `~/.grepvine/config.yaml` (Node.js). */
-  configPath?: string;
-  /** Environment variables to read instead of `process.env` (Node.js). */
-  env?: Record<string, string | undefined>;
 }
 
 /**
@@ -39,17 +35,14 @@ export type HttpFetch = (path: string, init?: RequestInit) => Promise<Response>;
 /**
  * A Grepvine client.
  *
- * In Node.js, the endpoint and API key are found the way the `gv`
- * command-line client finds them: the `GREPVINE_API_ENDPOINT` (or
- * `GREPVINE_ENDPOINT`) and `GREPVINE_API_KEY` environment variables, then
- * `~/.grepvine/config.yaml` as written by `gv login`, then the default
- * endpoint. Explicit options win. In a browser, only the options apply.
- * Nothing is read until the first request.
+ * `apiKey` authenticates requests and `endpoint` defaults to
+ * `https://api.grepvine.ai`. The client reads no environment variables or
+ * configuration files.
  *
  * ```ts
  * import { GrepvineClient } from "@grepvine/sdk";
  *
- * const client = new GrepvineClient();
+ * const client = new GrepvineClient({ apiKey: "gvk_..." });
  * for await (const org of client.organizations.list()) {
  *   console.log(org.name, org.role);
  * }

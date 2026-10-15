@@ -16,38 +16,24 @@ Data the SDK returns keeps the API's field names, such as `created_at` and
 
 ## Authentication
 
-In Node.js the SDK finds its endpoint and API key the way the `gv`
-command-line client does, so a machine where `gv login` has run needs no
-configuration:
-
-1. `GREPVINE_API_ENDPOINT` (or `GREPVINE_ENDPOINT`) and `GREPVINE_API_KEY` in
-   the environment.
-2. `endpoint` and `api_key` in `~/.grepvine/config.yaml`, the file `gv login`
-   writes. The file must be readable by its owner only (mode `0600`).
-3. The default endpoint, `https://api.grepvine.ai`.
+Pass your API key, and the endpoint when you use a service other than
+`https://api.grepvine.ai`:
 
 ```ts
 import { GrepvineClient } from "@grepvine/sdk";
 
-const client = new GrepvineClient();
-```
-
-Options win over the environment and the file:
-
-```ts
 const client = new GrepvineClient({
   apiKey: "gvk_...",
   endpoint: "https://grepvine.example.com",
 });
 ```
 
-In a browser only the options apply. Nothing is read until the first
-request. A `GrepvineClient` also takes `timeout` (the time limit of each
-attempt, in milliseconds; default 60,000), `retry` (a `RetryPolicy`), `fetch`
-(another `fetch` to send requests with), and `configPath` (another
-configuration file). A missing API key throws `ConfigurationError` on the
-first request that needs one. `await client.config()` reports the resolved
-settings.
+The SDK reads no environment variables or configuration files; pass the values
+from wherever your application keeps them. A `GrepvineClient` also takes
+`timeout` (the time limit of each attempt, in milliseconds; default 60,000),
+`retry` (a `RetryPolicy`) and `fetch` (another `fetch` to send requests with).
+A missing API key throws `ConfigurationError` on the first request that needs
+one. `await client.config()` reports the settings in use.
 
 Every method takes a `signal` option, an `AbortSignal` that cancels it.
 
@@ -383,7 +369,7 @@ code to show through `onCode`, and polls at the service's interval until the
 key is issued:
 
 ```ts
-const device = new GrepvineClient();
+const device = new GrepvineClient(); // no API key needed to start a login
 const key = await device.deviceLogin.authorize({
   apiKeyName: "build agent",
   onCode: ({ verification_uri_complete, user_code }) =>

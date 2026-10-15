@@ -40,7 +40,6 @@ const seen = [];
 const client = new GrepvineClient({
   apiKey: "gvk",
   endpoint: "http://grepvine.test",
-  env: {},
   retry: new RetryPolicy({ backoff: [1] }),
   fetch: async (request, init) => {
     request = new Request(request, init);
