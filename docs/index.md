@@ -9,8 +9,12 @@ npm install @grepvine/sdk
 Node.js 22.18 or later, or a modern browser. The package is ESM only and
 ships TypeScript declarations; import everything from the package root.
 
-Data the SDK returns keeps the API's field names, such as `created_at` and
-`line_number`. Methods and options use camelCase, such as `pageSize`.
+Every API operation is a method of a resource on the client, such as
+`client.indexes.list` or `client.search.query`. A method takes one object with
+the API's parameters, path, query and body fields alike, and returns the API's
+answer with the API's field names, such as `created_at` and `line_number`.
+Types are exported under their API names: models such as `Index` and
+`QueryResult`, and per-operation types such as `ListIndexesData`.
 
 ## Authentication
 
@@ -26,251 +30,235 @@ const client = new GrepvineClient({
 });
 ```
 
-The SDK reads no environment variables or configuration files; pass the values
-from wherever your application keeps them. A `GrepvineClient` also takes
-`timeout` (the time limit of each attempt, in milliseconds; default 60,000),
-`retry` (a `RetryPolicy`) and `fetch` (another `fetch` to send requests with).
-A missing API key throws `ConfigurationError` on the first request that needs
-one. `await client.config()` reports the settings in use.
+The key is sent as a bearer token. The SDK reads no environment variables or
+configuration files; pass the values from wherever your application keeps
+them. A `GrepvineClient` also takes `timeout` (the time limit of each attempt,
+in milliseconds; default 60,000), `retry` (a `RetryPolicy`) and `fetch`
+(another `fetch` to send requests with).
 
-Every method takes a `signal` option, an `AbortSignal` that cancels it.
+Every method takes a second argument of request options, such as `signal`, an
+`AbortSignal` that cancels the call.
 
 ## Organizations
 
 ```ts
-for await (const org of client.organizations.list()) {
+import { paginate } from "@grepvine/sdk";
+
+for await (const org of paginate(client.organizations.list, {})) {
   console.log(org.name, org.role);
 }
 
-const org = await client.organizations.get("my-org");
+const org = await client.organizations.get({ organization: "my-org" });
+await client.organizations.create({ name: "new-org" });
+await client.organizations.transferOwnership({
+  organization: "new-org",
+  user: "alice",
+});
+await client.organizations.delete({ organization: "new-org" });
 ```
 
-`create(name)` creates an organization, `delete(name)` starts deleting one,
-and `transferOwnership(organization, user)` makes another account its owner.
-Members are managed through `members(organization)`:
+Members are managed through `client.organizations.members`:
 
 ```ts
-const members = client.organizations.members("my-org");
-await members.add("alice", { role: "developer" });
-await members.update("alice", { role: "admin" });
-for await (const member of members.list()) {
+const where = { organization: "my-org" };
+await client.organizations.members.add({
+  ...where,
+  user: "alice",
+  role: "developer",
+});
+await client.organizations.members.update({
+  ...where,
+  user: "alice",
+  role: "admin",
+});
+for await (const member of paginate(client.organizations.members.list, where)) {
   console.log(member.user.name, member.role);
 }
-await members.remove("alice");
+await client.organizations.members.remove({ ...where, user: "alice" });
 ```
 
 ## Indexes
 
-Indexes are referenced as `"organization/index"`.
-
 ```ts
-let index = await client.indexes.create("my-org/my-index", {
+await client.indexes.create({
+  organization: "my-org",
+  name: "my-index",
   description: "# Product docs\n\nEvery guide we publish.", // Markdown, optional
   tags: { team: "search", commit: "3f9c2a1" }, // key/value labels, optional
-  existOk: true,
-  wait: true, // return once the index is ready
 });
-index = await client.indexes.get("my-org/my-index");
-console.log(index.state, index.document_count);
-console.log(index.description);
-console.log(index.tags.commit);
+let index = await client.indexes.waitUntilReady({
+  organization: "my-org",
+  index: "my-index",
+  timeout: 60_000, // optional, in milliseconds
+});
+console.log(index.state, index.document_count, index.tags.commit);
 
-for await (const index of client.indexes.list("my-org")) {
+for await (const index of paginate(client.indexes.list, {
+  organization: "my-org",
+  prefix: "docs-", // optional
+})) {
   console.log(`${index.name}: ${index.document_count} documents`);
 }
-const docsIndexes = await client.indexes
-  .list("my-org", { prefix: "docs-" })
-  .toArray();
 
-index = await index.update({
-  description: "Guides, runbooks and the API reference.",
+index = await client.indexes.update({
+  organization: "my-org",
+  index: "my-index",
+  tags: { team: "platform", commit: null }, // set one, remove one
 });
-index = await index.update({ tags: { team: "platform", commit: null } }); // set one, remove one
-index = await index.setTags({ commit: "8b1d0e4" });
-index = await index.removeTags("team");
-await index.exists();
-await index.delete(); // deletion completes in the background
+await client.indexes.delete({ organization: "my-org", index: "my-index" });
 ```
 
-`document_count` and the other fields are a snapshot from when the handle was
-fetched; `index.refresh()` returns a new handle. `index.waitUntilReady({
-timeout })` waits until a new index is ready and returns a fresh handle. An
-index's `description` is Markdown, at most 16,384 characters, and empty when
-none was set; `update({ description })` replaces it (an empty string clears
-it) and returns a new handle. An index's `tags` are a read-only object of
-key/value labels, empty when none was set. `update({ tags })` merges into
-them: every key given is set, a key given as `null` is removed, and keys left
-out stay as they are; `setTags(...)` and `removeTags(...)` are shorthands for
-those two cases. `update` sends only the fields you pass, so changing the
-description leaves the tags alone and the other way round. Changing a
-description or tags needs the admin or owner role.
+A new index is `creating` until it is ready; `waitUntilReady` checks it until
+it is, and throws `GrepvineError` if it does not become ready in time or is
+being deleted. An index's `description` is Markdown, at most 16,384
+characters. `update` changes only the fields you pass: `description` replaces
+the current one (an empty string clears it), and `tags` is merged into the
+current tags, where a key given as `null` is removed. Changing a description
+or tags needs the admin or owner role. Deletion completes in the background.
 
 ## Search
 
 ```ts
-const index = await client.indexes.get("my-org/my-index");
+const where = { organization: "my-org", index: "my-index" };
 
-for await (const result of index.search("TODO|FIXME")) {
-  console.log(`${result.key}:${result.line_number}: ${result.text}`);
+for await (const hit of paginate(client.search.query, {
+  ...where,
+  pattern: "TODO|FIXME",
+})) {
+  console.log(`${hit.key}:${hit.line_number}: ${hit.text}`);
 }
 
-for await (const result of index.search("hello world", {
-  regex: false, // literal text instead of a regular expression
-  caseSensitive: false,
-  wholeWord: true, // literal mode only
+for await (const hit of paginate(client.search.query, {
+  ...where,
+  pattern: "hello world",
+  mode: "literal", // literal text instead of a regular expression
+  case_sensitive: false,
+  whole_word: true, // literal mode only
   multiline: false, // true lets a match span lines
-  filters: ["path STARTSWITH 'src/'", "size < 100000"],
-  linesBefore: 2,
-  linesAfter: 2,
+  filter: "path STARTSWITH 'src/' AND size < 100000",
+  lines_before: 2,
+  lines_after: 2,
 })) {
-  for (const line of result.lines_before) {
-    console.log(`${result.key}-${line.line_number}-${line.text}`);
+  for (const line of hit.lines_before ?? []) {
+    console.log(`${hit.key}-${line.line_number}-${line.text}`);
   }
-  console.log(`${result.key}:${result.line_number}:${result.text}`);
-  console.log(result.matchTexts());
+  console.log(`${hit.key}:${hit.line_number}:${hit.text}`);
 }
 ```
 
-A `SearchResult` carries the covered `text`, its `line_number`, and the
-`matches` as byte offsets within the document, which is what the API reports.
-`result.matchSpans()` converts them to positions within `text`, ready for
-`text.slice(start, end)`, and `result.matchTexts()` returns the matched
-strings.
-
-Filters are expressions over document metadata, such as
+A result carries the covered `text`, its `line_number`, and the `matches` as
+byte offsets within the document. Filters are expressions over document
+metadata, such as
 `path STARTSWITH 'docs/' AND mtime >= (CURRENT_DATE - INTERVAL '3 days')`.
-Several `filters` are joined with `AND`; a single expression can be passed as
-`filter`. The SDK records `path` and `size` metadata on every document it
+`documents.putMany` records `path` and `size` metadata on every document it
 stores, so filters on those fields work without extra effort.
 
 ## Documents
 
 ```ts
-const documents = index.documents;
+const where = { organization: "my-org", index: "my-index" };
 
-// Store one document: text, bytes, a Blob or File, or a file: URL in Node.js.
-await documents.put("notes/today.md", "# Today\n");
-await documents.put("report.pdf", new URL("file:///home/me/report.pdf"), {
-  metadata: { team: "sales" },
+const results = await client.documents.putMany({
+  ...where,
+  documents: [
+    { key: "notes/today.md", content: "# Today\n", metadata: { team: "docs" } },
+    {
+      key: "a.txt",
+      content: new TextEncoder().encode("alpha"),
+      ifNoneMatch: true,
+    },
+    { key: "logo.png", content: new Blob([png]) },
+  ],
 });
-
-// Store several at once.
-await documents.put([
-  { key: "a.txt", content: "alpha" },
-  {
-    key: "b.txt",
-    content: new TextEncoder().encode("beta"),
-    metadata: { lang: "el" },
-  },
-]);
-
-// Read.
-const data = await documents.get("notes/today.md"); // Uint8Array
-const text = await documents.get("notes/today.md", { mode: "text" }); // string
-const head = await documents.get("report.pdf", { range: [0, 1023] });
-const document = await documents.fetch("notes/today.md"); // content, revision, metadata
-
-// List.
-for await (const doc of documents.list({ prefix: "notes/" })) {
-  console.log(doc.key, doc.size, doc.searchable);
-}
-for await (const page of documents.list({ delimiter: "/" }).pages()) {
-  console.log(page.common_prefixes);
-}
-
-// Delete.
-await documents.delete("notes/today.md");
-await documents.delete(["a.txt", "b.txt"]);
-```
-
-Metadata values may be strings, numbers, booleans or `Date`s; the SDK tags
-them for the API and untags them on the way back. Whole numbers are stored as
-integers and must be safe JavaScript integers. Documents may carry up to 64
-metadata fields, two of which the SDK uses for `path` and `size` (and a
-third, `mtime`, when the content is a file). Your fields override those.
-
-Documents can be up to 1 GiB. Content that is valid UTF-8 and at most 100 MiB
-is searchable; anything else is stored and served but never matched by a
-search. `DocumentSummary.searchable` reports which applies.
-
-Preconditions are available on every write: `ifMatch: revision` applies the
-change only if the document still has that revision, and `ifNoneMatch: true`
-only if the document does not exist. A single-document write whose
-precondition fails throws `PreconditionFailedError`. In the array forms, put
-these inside each object; a document whose precondition fails is reported in
-its result instead, as described below.
-
-### Results of array writes
-
-The array forms of `put` and `delete` return one `MutationResult` per
-document, in input order. Each document is written on its own. A document
-whose `ifMatch` or `ifNoneMatch` condition fails is left unchanged and the
-others are written; an array `delete` does the same with a key that does not
-exist. The result of a written document has its new `revision`. The result of
-an unchanged document has no revision, `ok` is `false`, and `error` says why:
-its `code` is `"precondition_failed"` or `"not_found"`, and its `message` is
-the service's explanation.
-
-```ts
-const results = await documents.put([
-  { key: "a.txt", content: "alpha", ifNoneMatch: true },
-  { key: "b.txt", content: "beta", ifMatch: revision },
-]);
 for (const result of results) {
   if (result.error)
-    console.log(`${result.key} was not stored: ${result.error.message}`);
+    console.log(`${result.key} was not stored: ${result.error.error}`);
 }
 
-const missing = (await documents.delete(["a.txt", "gone.txt"]))
-  .filter((result) => !result.ok)
-  .map((result) => result.key);
+const blob = await client.documents.get({ ...where, key: "notes/today.md" });
+console.log(await blob.text());
+const head = await client.documents.get({
+  ...where,
+  key: "logo.png",
+  Range: "bytes=0-1023",
+});
+
+for await (const doc of paginate(client.documents.list, {
+  ...where,
+  prefix: "notes/",
+})) {
+  console.log(doc.key, doc.content_bytes, doc.searchable);
+}
+
+await client.documents.delete({ ...where, key: "notes/today.md" });
+await client.documents.deleteBatch({
+  ...where,
+  objects: [{ key: "a.txt" }, { key: "logo.png" }],
+});
 ```
 
-Text documents travel in batches of up to 2,048 documents and 16 MiB, and
-binary or larger documents travel one at a time. If a request fails after
-earlier requests got an answer, for example because the service failed on
-every attempt, the SDK throws `PartialBatchError`. It has `committed` (the
-results so far, unchanged documents included), `failedKeys` (the documents of
-the failed request; the service may have written some of them), and
-`pendingKeys` (the documents that were never sent). If the first request
-fails, the SDK throws the underlying error unchanged. To finish an
-interrupted write safely, give it an `idempotencyKey` and repeat it with the
-same key and the same documents: the service does not write a document twice.
+`putMany` stores any number of documents and returns one `MutationResult` per
+document, in input order. Text (a string, or bytes that are valid UTF-8)
+travels as NDJSON in batches of up to 2,048 documents and 16 MiB; other
+content, or text over 16 MiB, is stored one document at a time. Metadata
+values may be strings, numbers, booleans or `Date`s, or values already tagged
+as `{ type, value }`; whole numbers are stored as integers. Every document
+also gets `path` (its key) and `size` metadata, which your fields override.
+Documents may carry up to 64 metadata fields.
+
+Each document is stored on its own. `ifMatch: revision` stores it only if it
+still has that revision, and `ifNoneMatch: true` only if it does not exist; a
+document whose condition fails is left unchanged and its result carries an
+`error` with code `"precondition_failed"`, while the others are stored.
+
+If a request fails after earlier requests got an answer, `putMany` throws
+`PartialBatchError`. It has `committed` (the results so far), `failedKeys`
+(the documents of the failed request; the service may have stored some of
+them), and `pendingKeys` (the documents that were never sent). If the first
+request fails, the underlying error is thrown unchanged. To finish an
+interrupted call safely, give it an `idempotencyKey` and repeat it with the
+same key and documents: the service does not store a document twice.
+
+`documents.put` stores one document from a `Blob` and takes its `metadata` as
+a JSON string; `documents.putBatch` takes an NDJSON body, sent unchanged.
+Documents can be up to 1 GiB. Content that is valid UTF-8 and at most 100 MiB
+is searchable; anything else is stored and served but never matched by a
+search, which a listing's `searchable` reports.
 
 ## Pagination
 
-Every `list` and `search` returns a `Paginator`. Iterating it with
-`for await` yields every result, fetching pages as needed:
+Every list method and `search.query` returns one page: `results` and
+`pagination`. `paginate(method, parameters)` iterates every item of every
+page, fetching pages as the loop needs them:
 
 ```ts
-for await (const doc of documents.list()) {
+for await (const index of paginate(client.indexes.list, {
+  organization: "my-org",
+})) {
   // ...
 }
 ```
 
-`limit` caps the number of results yielded. `pageSize` (1 to 200) sets how
-many results each request asks for. `first()` returns the first result and
-`toArray()` collects them all. `pages()` yields `Page` objects, and a page's
-`next_page_id` lets a later call continue from it:
+It follows `pagination.next_page_id` while `pagination.has_next` is true; a
+page may be empty while more follow, as a search page that reached the
+service's time budget. `amount` (1 to 200) sets how many results each request
+asks for, and `page` starts from a page an earlier call returned. A page token
+is valid for 15 minutes and only with the same parameters, including
+`amount`; otherwise the service answers with `InvalidPageError`. For one page
+at a time, call the method itself:
 
 ```ts
-const pages = documents.list({ pageSize: 100 }).pages();
-const { value: page } = await pages.next();
-const later = documents.list({
-  page: page!.next_page_id,
-  pageSize: page!.page_size,
+const { results, pagination } = await client.indexes.list({
+  organization: "my-org",
+  amount: 50,
 });
 ```
-
-A continuation is valid for 15 minutes and only with the same arguments,
-including `pageSize`; otherwise the service answers with `InvalidPageError`.
-A search page may be empty while more results follow; the paginator keeps
-going until the service reports the end.
 
 ## Errors
 
 Every error is a `GrepvineError`. Errors from the service are `APIError`
-subclasses with `statusCode`, `code`, `message` and `requestId`:
+subclasses with `statusCode`, `code`, `reason`, `message`, `requestId` and
+`retryAfter`:
 
 | Error                      | When                                                                                            |
 | -------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -279,60 +267,63 @@ subclasses with `statusCode`, `code`, `message` and `requestId`:
 | `PermissionDeniedError`    | The caller may not perform the action.                                                          |
 | `NotFoundError`            | The resource does not exist or is not visible.                                                  |
 | `ConflictError`            | The request conflicts with the current state, such as creating an index that exists.            |
-| `PreconditionFailedError`  | An `ifMatch` or `ifNoneMatch` condition failed on a single-document write.                      |
+| `PreconditionFailedError`  | An `If-Match` or `If-None-Match` condition failed.                                              |
 | `PayloadTooLargeError`     | A document or batch is over its size limit.                                                     |
 | `RangeNotSatisfiableError` | A byte range does not overlap the document.                                                     |
 | `RateLimitedError`         | The service kept asking the client to slow down for longer than the client was willing to wait. |
 | `ServerError`              | The service failed on every attempt.                                                            |
 
-`ConfigurationError` means the client has no API key or an unusable endpoint
-or configuration file. `TransportError` means the request could not be
-delivered, or an attempt outlasted `timeout`. `PartialBatchError` is
-described above. A cancelled `signal` throws its reason unchanged.
+`ConfigurationError` means the endpoint is not usable. `TransportError` means
+the request could not be delivered, or an attempt outlasted `timeout`.
+`PartialBatchError` is described above. A cancelled `signal` throws its
+reason unchanged.
 
 The SDK retries on its own: a `429` pauses every request of the client for
 the interval the service asks for (with jitter, up to a minute at a time and
 ten minutes in total per request), and a `5xx` answer or a connection failure
-is retried twice more with a short backoff. Every write carries an
-idempotency key that stays the same across retries, so a retried write is
-applied once. Pass `retry: new RetryPolicy({ ... })` to change these bounds;
-its durations are in milliseconds.
+is retried twice more with a short backoff. Every document write carries an
+`Idempotency-Key` that stays the same across retries, so a retried write is
+applied once; pass your own as the `"Idempotency-Key"` parameter. Pass
+`retry: new RetryPolicy({ ... })` to change these bounds; its durations are in
+milliseconds.
 
 ## Concurrency and cancellation
 
-Every network method returns a `Promise`, and paginators are async iterables.
-A client may be shared by any number of concurrent calls; a `429` pauses all
-of them. Each iteration of a paginator starts over from the beginning.
-
-Pass `signal` to cancel a call, or `AbortSignal.timeout(ms)` to bound one in
-total:
+Every method returns a `Promise`. A client may be shared by any number of
+concurrent calls; a `429` pauses all of them. Methods keep their client when
+passed on, as `paginate` does. Pass `signal` to cancel a call, or
+`AbortSignal.timeout(ms)` to bound one in total:
 
 ```ts
-const index = await client.indexes.get("my-org/my-index", {
-  signal: AbortSignal.timeout(5_000),
-});
+const index = await client.indexes.get(
+  { organization: "my-org", index: "my-index" },
+  { signal: AbortSignal.timeout(5_000) },
+);
 ```
 
 ## API keys
 
 ```ts
-const created = await client.apiKeys.create("ci");
+const created = await client.apiKeys.create({ name: "ci" });
 console.log(created.key); // shown only this once
 
-for await (const key of client.apiKeys.list()) {
+for await (const key of paginate(client.apiKeys.list, {})) {
   console.log(key.name, key.prefix, key.revoked_at ?? "active");
 }
 
-await client.apiKeys.revoke(created.id);
+await client.apiKeys.revoke({ api_key_id: created.id });
 ```
 
 ## Account
 
-An API key authenticates every call except `register`, `usernameAvailable`
+An API key authenticates every call except `register`, `usernameAvailability`
 and `login`, which need no credentials.
 
 ```ts
-if (await client.account.usernameAvailable("alice")) {
+const { available } = await client.account.usernameAvailability({
+  name: "alice",
+});
+if (available) {
   await client.account.register({
     name: "alice",
     email: "alice@example.com",
@@ -341,19 +332,19 @@ if (await client.account.usernameAvailable("alice")) {
 }
 
 const me = await client.account.me();
-await client.account.changePassword({ currentPassword, newPassword });
+await client.account.changePassword({ current_password, new_password });
 ```
 
 `login` starts a session and keeps it on the client, so later calls use it
 instead of an API key until `logout`. In Node.js the client keeps the session
 cookie and its CSRF token itself; in a browser the browser keeps the cookie,
-requests are sent with `credentials: "include"`, and the service must allow
-the page's origin.
+a client without an API key sends requests with `credentials: "include"`, and
+the service must allow the page's origin.
 
 ```ts
 const client = new GrepvineClient({ endpoint: "https://grepvine.example.com" });
 await client.account.login({ identifier: "alice", password });
-const key = await client.apiKeys.create("laptop");
+const key = await client.apiKeys.create({ name: "laptop" });
 await client.account.logout();
 ```
 
@@ -363,8 +354,8 @@ Without a session, `logout` revokes the API key the client uses.
 
 A device such as a command-line tool or an agent can get an API key of its
 own by having a person approve it. `authorize` starts a login, reports the
-code to show through `onCode`, and polls at the service's interval until the
-key is issued:
+code to show through `onCode`, and polls at the service's interval, slowing
+down when the service asks, until the key is issued:
 
 ```ts
 const device = new GrepvineClient(); // no API key needed to start a login
@@ -379,23 +370,13 @@ const client = new GrepvineClient({ apiKey: key.key });
 
 A denied login throws `InvalidRequestError` with code `"access_denied"`; one
 that expires, or outlasts `timeout`, throws `GrepvineError`. The steps are
-also available one at a time: `start({ apiKeyName })`, then
-`poll(deviceCode)` until it returns `{ status: "issued", apiKey }`. The
-person approving uses a client with a session or an API key:
+also available one at a time: `start({ api_key_name })`, then
+`poll({ device_code })` until it returns the key; until then it throws
+`InvalidRequestError` with code `"authorization_pending"` or `"slow_down"`.
+The person approving uses a client with a session or an API key:
 
 ```ts
-await approver.deviceLogin.approve("ABCD-EFGH"); // or deny(...)
-```
-
-## Other requests
-
-`client.http(path, init)` sends any request to the API with the client's
-endpoint, authentication and retries, and returns the `Response` as it is,
-whatever its status:
-
-```ts
-const response = await client.http("/organizations?amount=10");
-console.log(response.status, await response.json());
+await approver.deviceLogin.approve({ user_code: "ABCD-EFGH" }); // or deny(...)
 ```
 
 ## Limits worth knowing
@@ -407,19 +388,21 @@ console.log(response.status, await response.json());
   and hyphens, starting with a letter. A name keeps the case it was created
   with, and any spelling that differs only in case refers to the same
   organization or index.
-- `linesBefore` and `linesAfter`: at most 20 each.
+- `lines_before` and `lines_after`: at most 20 each.
 - Tags: at most 64 per index. A key is 1 to 128 characters without whitespace
   or control characters; a value is at most 1,024 characters without control
   characters.
 
 ## Reference
 
-The reference is organized by resource: {@link GrepvineClient} and
-{@link Paginator} under _Client_, then {@link Organizations},
-{@link Indexes} and {@link Index}, {@link Documents}, search with
-{@link SearchResult}, {@link ApiKeys}, {@link Account}, {@link DeviceLogin},
-the _Errors_ starting at {@link GrepvineError}, and the _Models_ the API
-returns.
+The reference is organized by resource: {@link GrepvineClient},
+{@link paginate} and {@link RetryPolicy} under _Client_, then
+{@link Organizations} and {@link Members}, {@link Indexes},
+{@link Documents}, {@link Search}, {@link ApiKeys}, {@link Account} and
+{@link DeviceLogin}, each with the request and response types of its
+methods. The _Errors_ start at {@link GrepvineError}, and the _Models_ are
+the types the API sends and receives, such as {@link Index} and
+{@link QueryResult}.
 
 ## License
 

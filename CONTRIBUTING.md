@@ -9,40 +9,51 @@ read [`README.md`](README.md).
 | ---------------------- | ----------------------------------------------------------------------------------------- |
 | `spec/openapi.json`    | The full public API contract exported by Grepvine. Never edit it here.                    |
 | `spec/source.json`     | The source repository, commit, operation list and checksum of the snapshot.               |
+| `sdk-operations.json`  | Where each operation lives on the client. Shared, identical, with the Python SDK.         |
 | `openapi-ts.config.ts` | Generator configuration.                                                                  |
-| `src/generated`        | Generated transport, operations and wire types. Never edit it; regenerate it.             |
-| `src/client.ts`        | `GrepvineClient`.                                                                         |
-| `src/runtime.ts`       | Configuration, authentication, the session, retries and timeouts shared by the resources. |
-| `src/resources`        | One file per resource; each method calls exactly one generated operation.                 |
-| `src/config.ts`        | Endpoint and API key lookup, matching `gv`.                                               |
-| `src/retry.ts`         | `RetryPolicy` and the client-wide `429` pause.                                            |
-| `src/paginator.ts`     | `Paginator`.                                                                              |
-| `src/models.ts`        | Models and result classes.                                                                |
+| `src/generated`        | Generated client, resource classes, models and transport. Never edit it; regenerate it.   |
+| `src/client.ts`        | `GrepvineClient`: endpoint, authentication, the session, idempotency keys, error mapping. |
+| `src/retry.ts`         | `RetryPolicy` and the retrying `fetch`.                                                   |
+| `src/paginate.ts`      | `paginate`.                                                                               |
+| `src/resources.ts`     | `Indexes`, `Documents` and `DeviceLogin`: the generated classes plus their helpers.       |
 | `src/errors.ts`        | The error hierarchy and status mapping.                                                   |
-| `tests`                | Vitest suites against an in-memory fake service (`tests/fake-server.ts`).                 |
+| `tests`                | Vitest suites against a fake `fetch` (`tests/fake.ts`), and optional live tests.          |
 | `docs`                 | The TypeDoc guide page (`docs/index.md`) and theme (`docs/theme`).                        |
 | `examples`             | Runnable examples.                                                                        |
 
 ## Design rules
 
-- The SDK offers the same resources, behaviour and error classes as Grepvine's
-  Python SDK, with camelCase methods and options. Data the SDK returns keeps
-  the API's field names.
-- Every resource method calls the generated operation for its endpoint.
-  Hand-written code is limited to what a generator cannot know: configuration
-  lookup, retries with stable idempotency keys, pagination, batching, waiting
-  for state changes, metadata tagging and error mapping. The only request
-  adaptation is the NDJSON body of `putObjects`, sent unchanged.
-- `tests/coverage.test.ts` checks that every operation in `spec/source.json`
-  is called by exactly one client method, so a new API operation fails CI
-  until it has a home.
-- `src/index.ts` never re-exports `src/generated`. Models the SDK returns are
-  written out in `src/models.ts` under their API names, and
-  `tests/types.test.ts` checks they stay identical to the generated types.
+- The SDK is mostly generated. Hey API generates one class, `GrepvineApi`,
+  with a property per resource and a method per operation, from
+  `sdk-operations.json`; the models and per-operation types, with their doc
+  comments from the spec; and the transport. Methods take one object of the
+  API's parameters (`paramsStructure: "flat"`) and return the answer's data,
+  throwing on an error answer.
+- Hand-written code is limited to what a generator cannot express: the client
+  options, bearer authentication and the login session, retries with stable
+  idempotency keys, typed errors, `paginate`, and three helpers on the
+  resources they belong to (`indexes.waitUntilReady`,
+  `deviceLogin.authorize`, `documents.putMany`). Anything else a caller needs
+  is a generated method. Helper names match the Python SDK (`paginate`,
+  `wait_until_ready`, `authorize`, `put_many`).
+- The generator configuration presents the spec to the generator without
+  changing `spec/openapi.json`: request bodies are inlined so their fields
+  become method parameters, the CSRF header is left to the client, and
+  `Idempotency-Key` is optional because the client sets one. Operation-based
+  type names (`ListIndexesData`) are kept by expressing the map as a custom
+  `strategy` rather than `nesting`.
+- `tests/coverage.test.ts` checks that `sdk-operations.json` covers every
+  operation in `spec/source.json`, and that each mapped method sends its
+  operation's request, so a new API operation fails CI until it has an entry.
+- `src/index.ts` exports the client, the resource classes, the helpers, the
+  errors and every API type under its API name; never the generated
+  transport (`createClient`, `client`) or `GrepvineApi`.
 - User-facing text (README, `docs/index.md`, doc comments, error messages)
   never mentions how the SDK is built, and never mentions service internals
   such as storage, caches or background maintenance. Errors say what the
   caller can do.
+- Loading configuration (environment variables, a configuration file) is
+  deferred: the client uses only the options it is given.
 - `docs/index.md` is the guide page of the documentation site and mirrors
   `README.md`; change both together.
 
@@ -62,9 +73,10 @@ npm run docs
 ```
 
 Generation reads the exported snapshot and needs only Node.js. Change the
-source contract in Grepvine rather than editing the snapshot. Operations and
-wire types are generated with `@hey-api/openapi-ts@0.99.0` (types, SDK and
-Fetch plugins); generation dependencies are development-only.
+source contract in Grepvine rather than editing the snapshot, and give a new
+operation its place in `sdk-operations.json` (in both SDK repositories). The
+client, models and transport are generated with `@hey-api/openapi-ts@0.99.0`
+(types, SDK and Fetch plugins); generation dependencies are development-only.
 
 `scripts/check-package.mjs` packs the package, installs it in a temporary
 directory and exercises the public interface from the installed copy.
@@ -89,8 +101,8 @@ npm run example:ingest-search            # add -- --keep-index to keep the index
 npm run example:device-login
 ```
 
-The ingest example creates a uniquely named index, stores one document on its
-own and two in a batch, searches with and without a metadata filter (three
+The ingest example creates a uniquely named index, waits until it is ready,
+stores three documents in one batch, searches with and without a metadata filter (three
 matches, then two), and requests deletion of its index unless
 `--keep-index` is given. The organization must exist, and the key needs
 permission to create and delete indexes.
@@ -98,12 +110,15 @@ permission to create and delete indexes.
 ## Documentation site
 
 TypeDoc builds the guide and reference from `src/index.ts`, with
-`docs/index.md` as the landing page. `docs/theme/plugin.mjs` sorts the
-reference into Client, Organizations, Indexes, Documents, Search, API keys,
-Account, Device login, Errors and Models (a `@category` tag wins over the
-source file), and fails the build if anything from `src/generated` would be
-documented. Warnings, including broken links and symbols referenced but not
-exported, fail the build.
+`docs/index.md` as the landing page. The resource classes and models come
+with the spec's descriptions. `docs/theme/plugin.mjs` sorts the reference into
+Client, Organizations, Indexes, Documents, Search, API keys, Account, Device
+login, Errors and Models: a resource class and the request and response types
+of its operations go under its resource from `sdk-operations.json`, and a
+`@category` tag wins over the source file. It also hides the resources'
+constructors. Warnings, including broken links and symbols referenced but not
+exported, fail the build; the transport types that public signatures mention
+are listed in `typedoc.json` under `intentionallyNotExported`.
 
 ```sh
 npm run docs
