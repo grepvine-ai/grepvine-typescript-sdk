@@ -22,5 +22,8 @@ export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (
 ) => Config<Required<ClientOptions> & T>;
 
 export const client: Client = createClient(
-  createConfig<ClientOptions2>({ baseUrl: "https://api.grepvine.ai/v1" }),
+  createConfig<ClientOptions2>({
+    baseUrl: "https://api.grepvine.ai/v1",
+    throwOnError: true,
+  }),
 );

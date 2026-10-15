@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { expect, it } from "vitest";
-import { GrepvineClient, NotFoundError } from "../src/index.js";
+import { GrepvineClient, NotFoundError, paginate } from "../src/index.js";
 
 const endpoint = process.env.GREPVINE_SDK_TEST_ENDPOINT;
 const apiKey = process.env.GREPVINE_SDK_TEST_API_KEY;
-const organization = process.env.GREPVINE_SDK_TEST_ORGANIZATION;
+const organization = process.env.GREPVINE_SDK_TEST_ORGANIZATION ?? "";
 
 const collect = async <T>(items: AsyncIterable<T>) => {
   const out: T[] = [];
@@ -16,68 +16,83 @@ it.skipIf(!endpoint || !apiKey || !organization)(
   "stores, reads, lists and searches documents against a live service",
   async () => {
     const client = new GrepvineClient({ endpoint, apiKey });
-    const index = await client.indexes.create(
-      `${organization}/sdk-ts-${randomUUID().slice(0, 8)}`,
-      { tags: { suite: "live" }, wait: true },
-    );
+    const index = `sdk-ts-${randomUUID().slice(0, 8)}`;
+    const where = { organization, index };
+    await client.indexes.create({
+      organization,
+      name: index,
+      tags: { suite: "live" },
+    });
     try {
-      const key = "sdk/café %.txt";
-      const stored = await index.documents.put(key, new Blob(["hello world"]), {
-        metadata: { flag: true },
+      await client.indexes.waitUntilReady(where);
+      const results = await client.documents.putMany({
+        ...where,
+        documents: [
+          {
+            key: "sdk/a.txt",
+            content: "hello world",
+            metadata: { flag: true },
+          },
+          {
+            key: "sdk/b.txt",
+            content: "hello again",
+            metadata: { kind: "guide" },
+          },
+          { key: "sdk/c.bin", content: new Uint8Array([0xff, 0x00]) },
+        ],
       });
-      expect(stored.revision).toBeTruthy();
-      const batch = await index.documents.put([
-        {
-          key: "sdk/b.txt",
-          content: "hello again",
-          metadata: { kind: "guide" },
-        },
-        {
-          key: "sdk/c.txt",
-          content: "hello third",
-          metadata: { kind: "note" },
-        },
-      ]);
-      expect(batch.every((result) => result.ok && result.revision)).toBe(true);
-
-      const head = await index.documents.fetch(key, { range: [0, 4] });
-      expect(head.text()).toBe("hello");
-      expect(head.revision).toBe(stored.revision);
-      expect(head.content_range?.total).toBe(11);
-
-      const pages = await collect(
-        index.documents.list({ prefix: "sdk/", pageSize: 1 }).pages(),
+      expect(results.every((result) => result.revision && !result.error)).toBe(
+        true,
       );
-      expect(
-        pages.flatMap((page) => page.results).map((doc) => doc.key),
-      ).toHaveLength(3);
 
-      const hits = await collect(
-        index.search("hello", { regex: false, pageSize: 1 }),
+      const head = await client.documents.get(
+        { ...where, key: "sdk/a.txt", Range: "bytes=0-4" },
+        { parseAs: "text" },
       );
-      expect(hits.map((hit) => hit.key).sort()).toEqual([
-        key,
-        "sdk/b.txt",
-        "sdk/c.txt",
-      ]);
-      const flagged = await collect(
-        index.search("hello", { filter: "flag = true" }),
-      );
-      expect(flagged.map((hit) => hit.key)).toEqual([key]);
-      const guides = await collect(
-        index.search("hello", {
-          filters: ["path STARTSWITH 'sdk/'", "kind = 'guide'"],
+      expect(head).toBe("hello");
+
+      const listed = await collect(
+        paginate(client.documents.list, {
+          ...where,
+          prefix: "sdk/",
+          amount: 1,
         }),
       );
-      expect(guides.map((hit) => hit.key)).toEqual(["sdk/b.txt"]);
+      expect(listed.map((doc) => doc.key)).toHaveLength(3);
 
-      await expect(index.documents.get("missing")).rejects.toBeInstanceOf(
-        NotFoundError,
+      const hits = await collect(
+        paginate(client.search.query, {
+          ...where,
+          pattern: "hello",
+          mode: "literal",
+        }),
       );
-      const deleted = await index.documents.delete(["sdk/b.txt", "missing"]);
-      expect(deleted.map((result) => result.ok)).toEqual([true, false]);
+      expect(hits.map((hit) => hit.key).sort()).toEqual([
+        "sdk/a.txt",
+        "sdk/b.txt",
+      ]);
+      const flagged = await collect(
+        paginate(client.search.query, {
+          ...where,
+          pattern: "hello",
+          filter: "flag = true",
+        }),
+      );
+      expect(flagged.map((hit) => hit.key)).toEqual(["sdk/a.txt"]);
+
+      await expect(
+        client.documents.get({ ...where, key: "missing" }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      const deleted = await client.documents.deleteBatch({
+        ...where,
+        objects: [{ key: "sdk/b.txt" }, { key: "missing" }],
+      });
+      expect(deleted.results.map((result) => !result.error)).toEqual([
+        true,
+        false,
+      ]);
     } finally {
-      await index.delete();
+      await client.indexes.delete(where);
     }
   },
   60_000,

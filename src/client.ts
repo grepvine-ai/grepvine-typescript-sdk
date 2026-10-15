@@ -1,16 +1,14 @@
-import { Account, ApiKeys, DeviceLogin } from "./resources/account.js";
-import { Indexes } from "./resources/indexes.js";
-import { Organizations } from "./resources/organizations.js";
-import type { RetryPolicy } from "./retry.js";
-import { Runtime, type ClientConfig } from "./runtime.js";
+import { createClient } from "./generated/client/index.js";
+import { GrepvineApi } from "./generated/sdk.gen.js";
+import { ConfigurationError, mapError } from "./errors.js";
+import { DeviceLogin, Documents, Indexes } from "./resources.js";
+import { RetryPolicy, retryingFetch } from "./retry.js";
 
 /**
  * Options of {@link GrepvineClient}. Every one is optional.
- *
- * @category Client
  */
 export interface GrepvineClientOptions {
-  /** The API key. */
+  /** The API key, sent as a bearer token. */
   apiKey?: string;
   /** The API endpoint, with or without `/v1`. Default `https://api.grepvine.ai`. */
   endpoint?: string;
@@ -22,79 +20,167 @@ export interface GrepvineClientOptions {
   fetch?: typeof fetch;
 }
 
-/**
- * Sends a request to the Grepvine API with the client's endpoint,
- * authentication and retries, and returns the answer as it is, whatever its
- * status. `path`, such as `"/organizations"`, is relative to the endpoint and
- * may carry a query string.
- *
- * @category Client
- */
-export type HttpFetch = (path: string, init?: RequestInit) => Promise<Response>;
+const DEFAULT_ENDPOINT = "https://api.grepvine.ai";
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const DOCUMENTS = "/organizations/{organization}/indexes/{index}/objects";
+
+function normalizeEndpoint(raw: string): string {
+  const endpoint = raw.trim().replace(/\/+$/, "");
+  const url = URL.parse(endpoint);
+  if (!url || !/^https?:$/.test(url.protocol) || /[?#]/.test(endpoint)) {
+    throw new ConfigurationError(
+      `endpoint ${JSON.stringify(raw)} must be an http or https URL without a query, such as ${DEFAULT_ENDPOINT}`,
+    );
+  }
+  return endpoint.endsWith("/v1") ? endpoint : `${endpoint}/v1`;
+}
 
 /**
- * A Grepvine client.
+ * Give every method its own `this`, so that a method can be passed on, as in
+ * `paginate(client.indexes.list, ...)`. Nested resources are bound when
+ * first read.
+ */
+function bindMethods<T extends object>(target: T): T {
+  const seen = new Set(Object.getOwnPropertyNames(target));
+  for (
+    let proto = Object.getPrototypeOf(target);
+    proto && proto !== Object.prototype;
+    proto = Object.getPrototypeOf(proto)
+  ) {
+    for (const [name, descriptor] of Object.entries(
+      Object.getOwnPropertyDescriptors(proto),
+    )) {
+      if (name === "constructor" || seen.has(name)) continue;
+      seen.add(name);
+      const { value, get } = descriptor;
+      if (typeof value === "function") {
+        Object.defineProperty(target, name, { value: value.bind(target) });
+      } else if (get) {
+        let resource: object | undefined;
+        Object.defineProperty(target, name, {
+          get: () => (resource ??= bindMethods(get.call(target))),
+        });
+      }
+    }
+  }
+  return target;
+}
+
+/**
+ * A Grepvine client: every API operation is a method of one of its
+ * resources.
  *
  * `apiKey` authenticates requests and `endpoint` defaults to
  * `https://api.grepvine.ai`. The client reads no environment variables or
- * configuration files.
+ * configuration files. Failed requests are retried according to `retry`, and
+ * an error answer is thrown as an {@link APIError} subclass.
  *
  * ```ts
- * import { GrepvineClient } from "@grepvine/sdk";
+ * import { GrepvineClient, paginate } from "@grepvine/sdk";
  *
  * const client = new GrepvineClient({ apiKey: "gvk_..." });
- * for await (const org of client.organizations.list()) {
+ * for await (const org of paginate(client.organizations.list, {})) {
  *   console.log(org.name, org.role);
  * }
  * ```
  *
- * @category Client
+ * After {@link Account.login}, the client sends the session's cookie (in
+ * Node.js) and CSRF token instead of the API key until
+ * {@link Account.logout}.
  */
-export class GrepvineClient {
-  /** Organizations and their members. */
-  readonly organizations: Organizations;
-  /** Indexes, their documents and search. */
-  readonly indexes: Indexes;
-  /** The API keys of the caller's account. */
-  readonly apiKeys: ApiKeys;
-  /** Accounts and sessions. */
-  readonly account: Account;
-  /** Logging in devices by approval. */
-  readonly deviceLogin: DeviceLogin;
-  /**
-   * Send any request to the API with this client's endpoint, authentication
-   * and retries, for anything the methods above do not cover.
-   *
-   * ```ts
-   * const response = await client.http("/organizations");
-   * console.log(response.status, await response.json());
-   * ```
-   */
-  readonly http: HttpFetch;
-  private readonly runtime: Runtime;
+export class GrepvineClient extends GrepvineApi {
+  /** The API endpoint requests go to, ending in `/v1`. */
+  readonly endpoint: string;
+  #indexes?: Indexes;
+  #documents?: Documents;
+  #deviceLogin?: DeviceLogin;
 
   constructor(options: GrepvineClientOptions = {}) {
-    this.runtime = new Runtime(options);
-    this.organizations = new Organizations(this.runtime);
-    this.indexes = new Indexes(this.runtime);
-    this.apiKeys = new ApiKeys(this.runtime);
-    this.account = new Account(this.runtime);
-    this.deviceLogin = new DeviceLogin(this.runtime);
-    this.http = async (path, init) => {
-      const { endpoint } = await this.runtime.resolve();
-      if (!path.startsWith("/")) {
-        // Credentials go only to the client's own endpoint.
-        throw new TypeError(
-          'the path must start with "/", such as "/organizations"',
+    const endpoint = normalizeEndpoint(options.endpoint || DEFAULT_ENDPOINT);
+    const timeout = options.timeout ?? 60_000;
+    if (!Number.isFinite(timeout) || timeout <= 0) {
+      throw new RangeError("timeout must be a positive number of milliseconds");
+    }
+    const session = { cookies: [] as string[], csrfToken: "" };
+    const client = createClient({
+      baseUrl: endpoint,
+      throwOnError: true,
+      responseStyle: "data",
+      fetch: retryingFetch(
+        options.fetch ?? globalThis.fetch,
+        options.retry ?? new RetryPolicy(),
+        timeout,
+      ) as typeof fetch,
+      // In a browser without an API key, the browser keeps the session cookie.
+      credentials: options.apiKey ? undefined : "include",
+      auth: (auth) =>
+        auth.scheme === "bearer" && !session.cookies.length
+          ? options.apiKey || undefined
+          : undefined,
+      // A string body (NDJSON) is sent as it is; anything else as JSON.
+      bodySerializer: (body) =>
+        typeof body === "string" ? body : JSON.stringify(body),
+    });
+
+    client.interceptors.request.use((request, opts) => {
+      if (session.cookies.length) {
+        request.headers.set("Cookie", session.cookies.join("; "));
+      }
+      if (SAFE_METHODS.has(request.method)) return request;
+      if (session.csrfToken) {
+        request.headers.set("X-Csrf-Token", session.csrfToken);
+      }
+      // Document writes take an idempotency key, set once here so that every
+      // retry carries the same one. Other routes do not accept the header.
+      if (
+        opts.url.startsWith(DOCUMENTS) &&
+        !request.headers.has("Idempotency-Key")
+      ) {
+        request.headers.set(
+          "Idempotency-Key",
+          crypto.randomUUID().replaceAll("-", ""),
         );
       }
-      const url = endpoint + path;
-      return this.runtime.send(new Request(url, init));
-    };
+      return request;
+    });
+
+    client.interceptors.response.use((response, _request, opts) => {
+      if (response.ok && opts.url === "/auth/login") {
+        session.csrfToken = response.headers.get("x-csrf-token") ?? "";
+        session.cookies = response.headers
+          .getSetCookie()
+          .map((cookie) => cookie.split(";", 1)[0].trim())
+          .filter(Boolean);
+      } else if (response.ok && opts.url === "/auth/logout") {
+        session.cookies = [];
+        session.csrfToken = "";
+      }
+      return response;
+    });
+
+    client.interceptors.error.use((error, response) =>
+      response && !response.ok
+        ? mapError(response.status, response.headers, error)
+        : error,
+    );
+
+    super({ client });
+    this.endpoint = endpoint;
+    bindMethods(this);
   }
 
-  /** The settings the client resolved; resolving reads the environment and the configuration file. */
-  config(): Promise<ClientConfig> {
-    return this.runtime.config();
+  /** Indexes of an organization. */
+  override get indexes(): Indexes {
+    return (this.#indexes ??= new Indexes({ client: this.client }));
+  }
+
+  /** The documents of an index. */
+  override get documents(): Documents {
+    return (this.#documents ??= new Documents({ client: this.client }));
+  }
+
+  /** Logging in devices by approval. */
+  override get deviceLogin(): DeviceLogin {
+    return (this.#deviceLogin ??= new DeviceLogin({ client: this.client }));
   }
 }

@@ -2,6 +2,7 @@
 
 import { client } from "./client.gen.js";
 import {
+  buildClientParams,
   type Client,
   type ClientMeta,
   formDataBodySerializer,
@@ -10,106 +11,78 @@ import {
   type TDataShape,
 } from "./client/index.js";
 import type {
-  AddOrganizationMemberData,
   AddOrganizationMemberErrors,
   AddOrganizationMemberResponses,
-  ApproveDeviceAuthorizationData,
   ApproveDeviceAuthorizationErrors,
   ApproveDeviceAuthorizationResponses,
-  ChangePasswordData,
   ChangePasswordErrors,
   ChangePasswordResponses,
-  CreateApiKeyData,
   CreateApiKeyErrors,
   CreateApiKeyResponses,
-  CreateIndexData,
   CreateIndexErrors,
   CreateIndexResponses,
-  CreateOrganizationData,
   CreateOrganizationErrors,
   CreateOrganizationResponses,
-  DeleteDocumentData,
   DeleteDocumentErrors,
   DeleteDocumentResponses,
-  DeleteIndexData,
   DeleteIndexErrors,
   DeleteIndexResponses,
-  DeleteObjectsData,
+  DeleteObjectRecord,
   DeleteObjectsErrors,
   DeleteObjectsResponses,
-  DeleteOrganizationData,
   DeleteOrganizationErrors,
   DeleteOrganizationResponses,
-  DenyDeviceAuthorizationData,
   DenyDeviceAuthorizationErrors,
   DenyDeviceAuthorizationResponses,
-  GetCurrentUserData,
   GetCurrentUserErrors,
   GetCurrentUserResponses,
-  GetDocumentData,
   GetDocumentErrors,
   GetDocumentResponses,
-  GetIndexData,
   GetIndexErrors,
   GetIndexResponses,
-  GetOrganizationData,
   GetOrganizationErrors,
   GetOrganizationResponses,
-  GetUsernameAvailabilityData,
   GetUsernameAvailabilityErrors,
   GetUsernameAvailabilityResponses,
-  ListApiKeysData,
+  IndexDescription,
+  IndexName,
+  IndexTagChanges,
+  IndexTags,
   ListApiKeysErrors,
   ListApiKeysResponses,
-  ListDocumentsData,
   ListDocumentsErrors,
   ListDocumentsResponses,
-  ListIndexesData,
   ListIndexesErrors,
   ListIndexesResponses,
-  ListOrganizationMembersData,
   ListOrganizationMembersErrors,
   ListOrganizationMembersResponses,
-  ListOrganizationsData,
   ListOrganizationsErrors,
   ListOrganizationsResponses,
-  LoginData,
   LoginErrors,
   LoginResponses,
-  LogoutData,
   LogoutErrors,
   LogoutResponses,
-  PollDeviceTokenData,
+  Name,
   PollDeviceTokenErrors,
   PollDeviceTokenResponses,
-  PutDocumentData,
   PutDocumentErrors,
   PutDocumentResponses,
-  PutObjectsData,
   PutObjectsErrors,
   PutObjectsResponses,
-  QueryIndexData,
   QueryIndexErrors,
   QueryIndexResponses,
-  RegisterUserData,
   RegisterUserErrors,
   RegisterUserResponses,
-  RemoveOrganizationMemberData,
   RemoveOrganizationMemberErrors,
   RemoveOrganizationMemberResponses,
-  RevokeApiKeyData,
   RevokeApiKeyErrors,
   RevokeApiKeyResponses,
-  StartDeviceAuthorizationData,
   StartDeviceAuthorizationErrors,
   StartDeviceAuthorizationResponses,
-  TransferOrganizationOwnershipData,
   TransferOrganizationOwnershipErrors,
   TransferOrganizationOwnershipResponses,
-  UpdateIndexData,
   UpdateIndexErrors,
   UpdateIndexResponses,
-  UpdateOrganizationMemberData,
   UpdateOrganizationMemberErrors,
   UpdateOrganizationMemberResponses,
 } from "./types.gen.js";
@@ -132,66 +105,166 @@ export type Options<
   meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
 
-/**
- * Register a local user
- *
- * A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address.
- */
-export const registerUser = <ThrowOnError extends boolean = false>(
-  options: Options<RegisterUserData, ThrowOnError>,
-): RequestResult<RegisterUserResponses, RegisterUserErrors, ThrowOnError> =>
-  (options.client ?? client).post<
+class HeyApiClient {
+  protected client: Client;
+
+  constructor(args?: { client?: Client }) {
+    this.client = args?.client ?? client;
+  }
+}
+
+class HeyApiRegistry<T> {
+  private readonly defaultKey = "default";
+
+  private readonly instances: Map<string, T> = new Map();
+
+  get(key?: string): T {
+    const instance = this.instances.get(key ?? this.defaultKey);
+    if (!instance) {
+      throw new Error(
+        `No SDK client found. Create one with "new GrepvineApi()" to fix this error.`,
+      );
+    }
+    return instance;
+  }
+
+  set(value: T, key?: string): void {
+    this.instances.set(key ?? this.defaultKey, value);
+  }
+}
+
+export class Account extends HeyApiClient {
+  /**
+   * Register a local user
+   *
+   * A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address.
+   */
+  public register<ThrowOnError extends boolean = true>(
+    parameters: {
+      name: Name;
+      email: string;
+      password: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     RegisterUserResponses,
     RegisterUserErrors,
-    ThrowOnError
-  >({
-    url: "/auth/register",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "body", key: "name" },
+            { in: "body", key: "email" },
+            { in: "body", key: "password" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      RegisterUserResponses,
+      RegisterUserErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      url: "/auth/register",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
 
-/**
- * Check whether a username is available
- */
-export const getUsernameAvailability = <ThrowOnError extends boolean = false>(
-  options: Options<GetUsernameAvailabilityData, ThrowOnError>,
-): RequestResult<
-  GetUsernameAvailabilityResponses,
-  GetUsernameAvailabilityErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).get<
+  /**
+   * Check whether a username is available
+   */
+  public usernameAvailability<ThrowOnError extends boolean = true>(
+    parameters: {
+      name: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     GetUsernameAvailabilityResponses,
     GetUsernameAvailabilityErrors,
-    ThrowOnError
-  >({ url: "/auth/usernames/{name}", ...options });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "path", key: "name" }] }],
+    );
+    return (options?.client ?? this.client).get<
+      GetUsernameAvailabilityResponses,
+      GetUsernameAvailabilityErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      url: "/auth/usernames/{name}",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Create a user session
- */
-export const login = <ThrowOnError extends boolean = false>(
-  options: Options<LoginData, ThrowOnError>,
-): RequestResult<LoginResponses, LoginErrors, ThrowOnError> =>
-  (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
-    url: "/auth/login",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
+  /**
+   * Create a user session
+   */
+  public login<ThrowOnError extends boolean = true>(
+    parameters: {
+      identifier: string;
+      password: string;
     },
-  });
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<LoginResponses, LoginErrors, ThrowOnError, "data"> {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "body", key: "identifier" },
+            { in: "body", key: "password" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      LoginResponses,
+      LoginErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      url: "/auth/login",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
 
-/**
- * Revoke the current session
- */
-export const logout = <ThrowOnError extends boolean = false>(
-  options?: Options<LogoutData, ThrowOnError>,
-): RequestResult<LogoutResponses, LogoutErrors, ThrowOnError> =>
-  (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>(
-    {
+  /**
+   * Revoke the current session
+   */
+  public logout<ThrowOnError extends boolean = true>(
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<LogoutResponses, LogoutErrors, ThrowOnError, "data"> {
+    return (options?.client ?? this.client).post<
+      LogoutResponses,
+      LogoutErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
       security: [
         {
           in: "cookie",
@@ -202,823 +275,1551 @@ export const logout = <ThrowOnError extends boolean = false>(
       ],
       url: "/auth/logout",
       ...options,
-    },
-  );
+    });
+  }
 
-/**
- * Get the current user
- */
-export const getCurrentUser = <ThrowOnError extends boolean = false>(
-  options?: Options<GetCurrentUserData, ThrowOnError>,
-): RequestResult<GetCurrentUserResponses, GetCurrentUserErrors, ThrowOnError> =>
-  (options?.client ?? client).get<
+  /**
+   * Get the current user
+   */
+  public me<ThrowOnError extends boolean = true>(
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     GetCurrentUserResponses,
     GetCurrentUserErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/auth/me",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    return (options?.client ?? this.client).get<
+      GetCurrentUserResponses,
+      GetCurrentUserErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/auth/me",
+      ...options,
+    });
+  }
 
-/**
- * Change the current password
- */
-export const changePassword = <ThrowOnError extends boolean = false>(
-  options: Options<ChangePasswordData, ThrowOnError>,
-): RequestResult<ChangePasswordResponses, ChangePasswordErrors, ThrowOnError> =>
-  (options.client ?? client).put<
+  /**
+   * Change the current password
+   */
+  public changePassword<ThrowOnError extends boolean = true>(
+    parameters: {
+      current_password: string;
+      new_password: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     ChangePasswordResponses,
     ChangePasswordErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "body", key: "current_password" },
+            { in: "body", key: "new_password" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).put<
+      ChangePasswordResponses,
+      ChangePasswordErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/auth/password",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/auth/password",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
+}
 
-/**
- * Start device authorization
- */
-export const startDeviceAuthorization = <ThrowOnError extends boolean = false>(
-  options: Options<StartDeviceAuthorizationData, ThrowOnError>,
-): RequestResult<
-  StartDeviceAuthorizationResponses,
-  StartDeviceAuthorizationErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).post<
+export class DeviceLogin extends HeyApiClient {
+  /**
+   * Start device authorization
+   */
+  public start<ThrowOnError extends boolean = true>(
+    parameters: {
+      api_key_name: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     StartDeviceAuthorizationResponses,
     StartDeviceAuthorizationErrors,
-    ThrowOnError
-  >({
-    url: "/device/authorizations",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "api_key_name" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      StartDeviceAuthorizationResponses,
+      StartDeviceAuthorizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      url: "/device/authorizations",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
 
-/**
- * Approve device authorization
- */
-export const approveDeviceAuthorization = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<ApproveDeviceAuthorizationData, ThrowOnError>,
-): RequestResult<
-  ApproveDeviceAuthorizationResponses,
-  ApproveDeviceAuthorizationErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).post<
+  /**
+   * Approve device authorization
+   */
+  public approve<ThrowOnError extends boolean = true>(
+    parameters: {
+      user_code: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     ApproveDeviceAuthorizationResponses,
     ApproveDeviceAuthorizationErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "user_code" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      ApproveDeviceAuthorizationResponses,
+      ApproveDeviceAuthorizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/device/authorizations/approve",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/device/authorizations/approve",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * Deny device authorization
- */
-export const denyDeviceAuthorization = <ThrowOnError extends boolean = false>(
-  options: Options<DenyDeviceAuthorizationData, ThrowOnError>,
-): RequestResult<
-  DenyDeviceAuthorizationResponses,
-  DenyDeviceAuthorizationErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).post<
+  /**
+   * Deny device authorization
+   */
+  public deny<ThrowOnError extends boolean = true>(
+    parameters: {
+      user_code: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     DenyDeviceAuthorizationResponses,
     DenyDeviceAuthorizationErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "user_code" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      DenyDeviceAuthorizationResponses,
+      DenyDeviceAuthorizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/device/authorizations/deny",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/device/authorizations/deny",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * Poll for a device API key
- */
-export const pollDeviceToken = <ThrowOnError extends boolean = false>(
-  options: Options<PollDeviceTokenData, ThrowOnError>,
-): RequestResult<
-  PollDeviceTokenResponses,
-  PollDeviceTokenErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).post<
+  /**
+   * Poll for a device API key
+   */
+  public poll<ThrowOnError extends boolean = true>(
+    parameters: {
+      device_code: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     PollDeviceTokenResponses,
     PollDeviceTokenErrors,
-    ThrowOnError
-  >({
-    url: "/device/token",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "device_code" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      PollDeviceTokenResponses,
+      PollDeviceTokenErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      url: "/device/token",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+}
 
-/**
- * List API keys
- */
-export const listApiKeys = <ThrowOnError extends boolean = false>(
-  options?: Options<ListApiKeysData, ThrowOnError>,
-): RequestResult<ListApiKeysResponses, ListApiKeysErrors, ThrowOnError> =>
-  (options?.client ?? client).get<
+export class ApiKeys extends HeyApiClient {
+  /**
+   * List API keys
+   */
+  public list<ThrowOnError extends boolean = true>(
+    parameters?: {
+      amount?: number;
+      page?: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     ListApiKeysResponses,
     ListApiKeysErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/api-keys",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "amount" },
+            { in: "query", key: "page" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      ListApiKeysResponses,
+      ListApiKeysErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/api-keys",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Create an API key
- */
-export const createApiKey = <ThrowOnError extends boolean = false>(
-  options: Options<CreateApiKeyData, ThrowOnError>,
-): RequestResult<CreateApiKeyResponses, CreateApiKeyErrors, ThrowOnError> =>
-  (options.client ?? client).post<
+  /**
+   * Create an API key
+   */
+  public create<ThrowOnError extends boolean = true>(
+    parameters: {
+      name: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     CreateApiKeyResponses,
     CreateApiKeyErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "name" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      CreateApiKeyResponses,
+      CreateApiKeyErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/api-keys",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/api-keys",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * Revoke an API key
- */
-export const revokeApiKey = <ThrowOnError extends boolean = false>(
-  options: Options<RevokeApiKeyData, ThrowOnError>,
-): RequestResult<RevokeApiKeyResponses, RevokeApiKeyErrors, ThrowOnError> =>
-  (options.client ?? client).delete<
+  /**
+   * Revoke an API key
+   */
+  public revoke<ThrowOnError extends boolean = true>(
+    parameters: {
+      api_key_id: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     RevokeApiKeyResponses,
     RevokeApiKeyErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/api-keys/{api_key_id}",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "path", key: "api_key_id" }] }],
+    );
+    return (options?.client ?? this.client).delete<
+      RevokeApiKeyResponses,
+      RevokeApiKeyErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/api-keys/{api_key_id}",
+      ...options,
+      ...params,
+    });
+  }
+}
 
-/**
- * List organizations
- */
-export const listOrganizations = <ThrowOnError extends boolean = false>(
-  options?: Options<ListOrganizationsData, ThrowOnError>,
-): RequestResult<
-  ListOrganizationsResponses,
-  ListOrganizationsErrors,
-  ThrowOnError
-> =>
-  (options?.client ?? client).get<
-    ListOrganizationsResponses,
-    ListOrganizationsErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations",
-    ...options,
-  });
-
-/**
- * Create an organization
- */
-export const createOrganization = <ThrowOnError extends boolean = false>(
-  options: Options<CreateOrganizationData, ThrowOnError>,
-): RequestResult<
-  CreateOrganizationResponses,
-  CreateOrganizationErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).post<
-    CreateOrganizationResponses,
-    CreateOrganizationErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
+export class Members extends HeyApiClient {
+  /**
+   * List organization members
+   */
+  public list<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      amount?: number;
+      page?: string;
     },
-  });
-
-/**
- * Delete an organization
- */
-export const deleteOrganization = <ThrowOnError extends boolean = false>(
-  options: Options<DeleteOrganizationData, ThrowOnError>,
-): RequestResult<
-  DeleteOrganizationResponses,
-  DeleteOrganizationErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).delete<
-    DeleteOrganizationResponses,
-    DeleteOrganizationErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}",
-    ...options,
-  });
-
-/**
- * Get an organization
- */
-export const getOrganization = <ThrowOnError extends boolean = false>(
-  options: Options<GetOrganizationData, ThrowOnError>,
-): RequestResult<
-  GetOrganizationResponses,
-  GetOrganizationErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).get<
-    GetOrganizationResponses,
-    GetOrganizationErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}",
-    ...options,
-  });
-
-/**
- * List organization members
- */
-export const listOrganizationMembers = <ThrowOnError extends boolean = false>(
-  options: Options<ListOrganizationMembersData, ThrowOnError>,
-): RequestResult<
-  ListOrganizationMembersResponses,
-  ListOrganizationMembersErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).get<
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     ListOrganizationMembersResponses,
     ListOrganizationMembersErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/members",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "query", key: "amount" },
+            { in: "query", key: "page" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      ListOrganizationMembersResponses,
+      ListOrganizationMembersErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/members",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Add an organization member
- */
-export const addOrganizationMember = <ThrowOnError extends boolean = false>(
-  options: Options<AddOrganizationMemberData, ThrowOnError>,
-): RequestResult<
-  AddOrganizationMemberResponses,
-  AddOrganizationMemberErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).post<
+  /**
+   * Add an organization member
+   */
+  public add<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      user: Name;
+      role: "admin" | "developer" | "reader";
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     AddOrganizationMemberResponses,
     AddOrganizationMemberErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "body", key: "user" },
+            { in: "body", key: "role" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      AddOrganizationMemberResponses,
+      AddOrganizationMemberErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/members",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/members",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * Remove an organization member
- */
-export const removeOrganizationMember = <ThrowOnError extends boolean = false>(
-  options: Options<RemoveOrganizationMemberData, ThrowOnError>,
-): RequestResult<
-  RemoveOrganizationMemberResponses,
-  RemoveOrganizationMemberErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).delete<
+  /**
+   * Remove an organization member
+   */
+  public remove<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      user: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     RemoveOrganizationMemberResponses,
     RemoveOrganizationMemberErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/members/{user}",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "user" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).delete<
+      RemoveOrganizationMemberResponses,
+      RemoveOrganizationMemberErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/members/{user}",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Change an organization member role
- */
-export const updateOrganizationMember = <ThrowOnError extends boolean = false>(
-  options: Options<UpdateOrganizationMemberData, ThrowOnError>,
-): RequestResult<
-  UpdateOrganizationMemberResponses,
-  UpdateOrganizationMemberErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).put<
+  /**
+   * Change an organization member role
+   */
+  public update<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      user: Name;
+      role: "admin" | "developer" | "reader";
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     UpdateOrganizationMemberResponses,
     UpdateOrganizationMemberErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "user" },
+            { in: "body", key: "role" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).put<
+      UpdateOrganizationMemberResponses,
+      UpdateOrganizationMemberErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/members/{user}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/members/{user}",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
+}
 
-/**
- * Transfer organization ownership
- */
-export const transferOrganizationOwnership = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<TransferOrganizationOwnershipData, ThrowOnError>,
-): RequestResult<
-  TransferOrganizationOwnershipResponses,
-  TransferOrganizationOwnershipErrors,
-  ThrowOnError
-> =>
-  (options.client ?? client).put<
+export class Organizations extends HeyApiClient {
+  /**
+   * List organizations
+   */
+  public list<ThrowOnError extends boolean = true>(
+    parameters?: {
+      amount?: number;
+      page?: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    ListOrganizationsResponses,
+    ListOrganizationsErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "amount" },
+            { in: "query", key: "page" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      ListOrganizationsResponses,
+      ListOrganizationsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Create an organization
+   */
+  public create<ThrowOnError extends boolean = true>(
+    parameters: {
+      name: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    CreateOrganizationResponses,
+    CreateOrganizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "name" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      CreateOrganizationResponses,
+      CreateOrganizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
+   * Delete an organization
+   */
+  public delete<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    DeleteOrganizationResponses,
+    DeleteOrganizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "path", key: "organization" }] }],
+    );
+    return (options?.client ?? this.client).delete<
+      DeleteOrganizationResponses,
+      DeleteOrganizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Get an organization
+   */
+  public get<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    GetOrganizationResponses,
+    GetOrganizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "path", key: "organization" }] }],
+    );
+    return (options?.client ?? this.client).get<
+      GetOrganizationResponses,
+      GetOrganizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Transfer organization ownership
+   */
+  public transferOwnership<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      user: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     TransferOrganizationOwnershipResponses,
     TransferOrganizationOwnershipErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "body", key: "user" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).put<
+      TransferOrganizationOwnershipResponses,
+      TransferOrganizationOwnershipErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/owner",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/owner",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * List indexes
- */
-export const listIndexes = <ThrowOnError extends boolean = false>(
-  options: Options<ListIndexesData, ThrowOnError>,
-): RequestResult<ListIndexesResponses, ListIndexesErrors, ThrowOnError> =>
-  (options.client ?? client).get<
+  private _members?: Members;
+  get members(): Members {
+    return (this._members ??= new Members({ client: this.client }));
+  }
+}
+
+export class Indexes extends HeyApiClient {
+  /**
+   * List indexes
+   */
+  public list<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      amount?: number;
+      page?: string;
+      prefix?: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     ListIndexesResponses,
     ListIndexesErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "query", key: "amount" },
+            { in: "query", key: "page" },
+            { in: "query", key: "prefix" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      ListIndexesResponses,
+      ListIndexesErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Create an index
- */
-export const createIndex = <ThrowOnError extends boolean = false>(
-  options: Options<CreateIndexData, ThrowOnError>,
-): RequestResult<CreateIndexResponses, CreateIndexErrors, ThrowOnError> =>
-  (options.client ?? client).post<
+  /**
+   * Create an index
+   */
+  public create<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      name: IndexName;
+      description?: IndexDescription;
+      tags?: IndexTags;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     CreateIndexResponses,
     CreateIndexErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "body", key: "name" },
+            { in: "body", key: "description" },
+            { in: "body", key: "tags" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      CreateIndexResponses,
+      CreateIndexErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * Delete an index
- */
-export const deleteIndex = <ThrowOnError extends boolean = false>(
-  options: Options<DeleteIndexData, ThrowOnError>,
-): RequestResult<DeleteIndexResponses, DeleteIndexErrors, ThrowOnError> =>
-  (options.client ?? client).delete<
+  /**
+   * Delete an index
+   */
+  public delete<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      index: IndexName;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     DeleteIndexResponses,
     DeleteIndexErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).delete<
+      DeleteIndexResponses,
+      DeleteIndexErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Get an index
- */
-export const getIndex = <ThrowOnError extends boolean = false>(
-  options: Options<GetIndexData, ThrowOnError>,
-): RequestResult<GetIndexResponses, GetIndexErrors, ThrowOnError> =>
-  (options.client ?? client).get<
-    GetIndexResponses,
-    GetIndexErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}",
-    ...options,
-  });
+  /**
+   * Get an index
+   */
+  public get<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      index: IndexName;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<GetIndexResponses, GetIndexErrors, ThrowOnError, "data"> {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      GetIndexResponses,
+      GetIndexErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Update an index
- *
- * Changes the index's description or tags. A field absent from the request is left as it is. The name is immutable.
- */
-export const updateIndex = <ThrowOnError extends boolean = false>(
-  options: Options<UpdateIndexData, ThrowOnError>,
-): RequestResult<UpdateIndexResponses, UpdateIndexErrors, ThrowOnError> =>
-  (options.client ?? client).patch<
+  /**
+   * Update an index
+   *
+   * Changes the index's description or tags. A field absent from the request is left as it is. The name is immutable.
+   */
+  public update<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      index: IndexName;
+      description?: IndexDescription;
+      tags?: IndexTagChanges;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     UpdateIndexResponses,
     UpdateIndexErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { in: "body", key: "description" },
+            { in: "body", key: "tags" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).patch<
+      UpdateIndexResponses,
+      UpdateIndexErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
+}
 
-/**
- * List documents
- */
-export const listDocuments = <ThrowOnError extends boolean = false>(
-  options: Options<ListDocumentsData, ThrowOnError>,
-): RequestResult<ListDocumentsResponses, ListDocumentsErrors, ThrowOnError> =>
-  (options.client ?? client).get<
+export class Documents extends HeyApiClient {
+  /**
+   * List documents
+   */
+  public list<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      index: IndexName;
+      amount?: number;
+      page?: string;
+      prefix?: string;
+      delimiter?: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     ListDocumentsResponses,
     ListDocumentsErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}/objects",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { in: "query", key: "amount" },
+            { in: "query", key: "page" },
+            { in: "query", key: "prefix" },
+            { in: "query", key: "delimiter" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      ListDocumentsResponses,
+      ListDocumentsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}/objects",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Store one document
- *
- * Stores one document of at most 1 GiB. Content that is valid UTF-8 and at most 100 MiB is
- * searchable. Any other content, such as an image or a larger file, is stored, listed, and served
- * by the document endpoints but is never matched by a search. The `searchable` field of a listing
- * reports which applies.
- *
- */
-export const putDocument = <ThrowOnError extends boolean = false>(
-  options: Options<PutDocumentData, ThrowOnError>,
-): RequestResult<PutDocumentResponses, PutDocumentErrors, ThrowOnError> =>
-  (options.client ?? client).put<
+  /**
+   * Store one document
+   *
+   * Stores one document of at most 1 GiB. Content that is valid UTF-8 and at most 100 MiB is
+   * searchable. Any other content, such as an image or a larger file, is stored, listed, and served
+   * by the document endpoints but is never matched by a search. The `searchable` field of a listing
+   * reports which applies.
+   *
+   */
+  public put<ThrowOnError extends boolean = true>(
+    parameters: {
+      "Idempotency-Key"?: string;
+      "If-Match"?: string;
+      "If-None-Match"?: "*";
+      organization: Name;
+      index: IndexName;
+      key: string;
+      metadata?: string;
+      content: Blob | File;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     PutDocumentResponses,
     PutDocumentErrors,
-    ThrowOnError
-  >({
-    ...formDataBodySerializer,
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "headers", key: "Idempotency-Key" },
+            { in: "headers", key: "If-Match" },
+            { in: "headers", key: "If-None-Match" },
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { in: "body", key: "key" },
+            { in: "body", key: "metadata" },
+            { in: "body", key: "content" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).put<
+      PutDocumentResponses,
+      PutDocumentErrors,
+      ThrowOnError,
+      "data"
+    >({
+      ...formDataBodySerializer,
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}/objects",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": null,
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}/objects",
-    ...options,
-    headers: {
-      "Content-Type": null,
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * Delete one document
- */
-export const deleteDocument = <ThrowOnError extends boolean = false>(
-  options: Options<DeleteDocumentData, ThrowOnError>,
-): RequestResult<DeleteDocumentResponses, DeleteDocumentErrors, ThrowOnError> =>
-  (options.client ?? client).delete<
+  /**
+   * Delete one document
+   */
+  public delete<ThrowOnError extends boolean = true>(
+    parameters: {
+      "Idempotency-Key"?: string;
+      "If-Match"?: string;
+      organization: Name;
+      index: IndexName;
+      key: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     DeleteDocumentResponses,
     DeleteDocumentErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}/objects/{key}",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "headers", key: "Idempotency-Key" },
+            { in: "headers", key: "If-Match" },
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { in: "path", key: "key" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).delete<
+      DeleteDocumentResponses,
+      DeleteDocumentErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}/objects/{key}",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Get a document
- */
-export const getDocument = <ThrowOnError extends boolean = false>(
-  options: Options<GetDocumentData, ThrowOnError>,
-): RequestResult<GetDocumentResponses, GetDocumentErrors, ThrowOnError> =>
-  (options.client ?? client).get<
+  /**
+   * Get a document
+   */
+  public get<ThrowOnError extends boolean = true>(
+    parameters: {
+      Range?: string;
+      organization: Name;
+      index: IndexName;
+      key: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     GetDocumentResponses,
     GetDocumentErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
-      },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}/objects/{key}",
-    ...options,
-  });
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "headers", key: "Range" },
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { in: "path", key: "key" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      GetDocumentResponses,
+      GetDocumentErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}/objects/{key}",
+      ...options,
+      ...params,
+    });
+  }
 
-/**
- * Store a batch of documents
- *
- * Stores up to 2,048 documents. Each document is stored on its own: a document whose precondition
- * fails is not stored, the others are, and the result of each document says which happened. Retrying
- * with the same Idempotency-Key returns the same results and stores any document an interrupted
- * attempt did not reach. Batch content is text carried as JSON strings, so every document stored this
- * way is searchable. Store binary content, or a document over 16 MiB, with the
- * single-document endpoint. The body may be sent with `Content-Encoding: gzip`; the service decodes it
- * before applying the limits below, and answers any other content encoding with 415
- * `unsupported_content_encoding`.
- *
- */
-export const putObjects = <ThrowOnError extends boolean = false>(
-  options: Options<PutObjectsData, ThrowOnError>,
-): RequestResult<PutObjectsResponses, PutObjectsErrors, ThrowOnError> =>
-  (options.client ?? client).post<
+  /**
+   * Store a batch of documents
+   *
+   * Stores up to 2,048 documents. Each document is stored on its own: a document whose precondition
+   * fails is not stored, the others are, and the result of each document says which happened. Retrying
+   * with the same Idempotency-Key returns the same results and stores any document an interrupted
+   * attempt did not reach. Batch content is text carried as JSON strings, so every document stored this
+   * way is searchable. Store binary content, or a document over 16 MiB, with the
+   * single-document endpoint. The body may be sent with `Content-Encoding: gzip`; the service decodes it
+   * before applying the limits below, and answers any other content encoding with 415
+   * `unsupported_content_encoding`.
+   *
+   */
+  public putBatch<ThrowOnError extends boolean = true>(
+    parameters: {
+      "Idempotency-Key"?: string;
+      organization: Name;
+      index: IndexName;
+      body: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     PutObjectsResponses,
     PutObjectsErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "headers", key: "Idempotency-Key" },
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { key: "body", map: "body" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      PutObjectsResponses,
+      PutObjectsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}/objects:batch",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/x-ndjson",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}/objects:batch",
-    ...options,
-    headers: {
-      "Content-Type": "application/x-ndjson",
-      ...options.headers,
-    },
-  });
+    });
+  }
 
-/**
- * Delete a batch of documents
- *
- * Deletes up to 2,048 documents. Each document is deleted on its own: a document that does not
- * exist or whose precondition fails is not deleted, the others are, and the result of each document
- * says which happened. Retrying with the same Idempotency-Key returns the same results.
- *
- */
-export const deleteObjects = <ThrowOnError extends boolean = false>(
-  options: Options<DeleteObjectsData, ThrowOnError>,
-): RequestResult<DeleteObjectsResponses, DeleteObjectsErrors, ThrowOnError> =>
-  (options.client ?? client).post<
+  /**
+   * Delete a batch of documents
+   *
+   * Deletes up to 2,048 documents. Each document is deleted on its own: a document that does not
+   * exist or whose precondition fails is not deleted, the others are, and the result of each document
+   * says which happened. Retrying with the same Idempotency-Key returns the same results.
+   *
+   */
+  public deleteBatch<ThrowOnError extends boolean = true>(
+    parameters: {
+      "Idempotency-Key"?: string;
+      organization: Name;
+      index: IndexName;
+      objects: Array<DeleteObjectRecord>;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     DeleteObjectsResponses,
     DeleteObjectsErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "headers", key: "Idempotency-Key" },
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { in: "body", key: "objects" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      DeleteObjectsResponses,
+      DeleteObjectsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}/objects:delete",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}/objects:delete",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
+}
 
-/**
- * Search an index
- */
-export const queryIndex = <ThrowOnError extends boolean = false>(
-  options: Options<QueryIndexData, ThrowOnError>,
-): RequestResult<QueryIndexResponses, QueryIndexErrors, ThrowOnError> =>
-  (options.client ?? client).post<
+export class Search extends HeyApiClient {
+  /**
+   * Search an index
+   */
+  public query<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      index: IndexName;
+      amount?: number;
+      page?: string;
+      pattern: string;
+      mode?: "regex" | "literal";
+      case_sensitive?: boolean;
+      whole_word?: boolean;
+      multiline?: boolean;
+      filter?: string;
+      lines_before?: number;
+      lines_after?: number;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
     QueryIndexResponses,
     QueryIndexErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: "cookie",
-        name: "__Host-grepvine-session",
-        type: "apiKey",
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "index" },
+            { in: "query", key: "amount" },
+            { in: "query", key: "page" },
+            { in: "body", key: "pattern" },
+            { in: "body", key: "mode" },
+            { in: "body", key: "case_sensitive" },
+            { in: "body", key: "whole_word" },
+            { in: "body", key: "multiline" },
+            { in: "body", key: "filter" },
+            { in: "body", key: "lines_before" },
+            { in: "body", key: "lines_after" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      QueryIndexResponses,
+      QueryIndexErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/organizations/{organization}/indexes/{index}/query",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
       },
-      { scheme: "bearer", type: "http" },
-    ],
-    url: "/organizations/{organization}/indexes/{index}/query",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+    });
+  }
+}
+
+export class GrepvineApi extends HeyApiClient {
+  public static readonly __registry: HeyApiRegistry<GrepvineApi> =
+    new HeyApiRegistry<GrepvineApi>();
+
+  constructor(args?: { client?: Client; key?: string }) {
+    super(args);
+    GrepvineApi.__registry.set(this, args?.key);
+  }
+
+  private _account?: Account;
+  get account(): Account {
+    return (this._account ??= new Account({ client: this.client }));
+  }
+
+  private _deviceLogin?: DeviceLogin;
+  get deviceLogin(): DeviceLogin {
+    return (this._deviceLogin ??= new DeviceLogin({ client: this.client }));
+  }
+
+  private _apiKeys?: ApiKeys;
+  get apiKeys(): ApiKeys {
+    return (this._apiKeys ??= new ApiKeys({ client: this.client }));
+  }
+
+  private _organizations?: Organizations;
+  get organizations(): Organizations {
+    return (this._organizations ??= new Organizations({ client: this.client }));
+  }
+
+  private _indexes?: Indexes;
+  get indexes(): Indexes {
+    return (this._indexes ??= new Indexes({ client: this.client }));
+  }
+
+  private _documents?: Documents;
+  get documents(): Documents {
+    return (this._documents ??= new Documents({ client: this.client }));
+  }
+
+  private _search?: Search;
+  get search(): Search {
+    return (this._search ??= new Search({ client: this.client }));
+  }
+}

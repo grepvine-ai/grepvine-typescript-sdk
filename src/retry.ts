@@ -1,3 +1,5 @@
+import { GrepvineError, TransportError, mapError } from "./errors.js";
+
 /**
  * How a client retries failed requests.
  *
@@ -14,15 +16,19 @@
  * ```ts
  * const client = new GrepvineClient({ retry: new RetryPolicy({ maxAttempts: 5 }) });
  * ```
- *
- * @category Client
  */
 export class RetryPolicy {
+  /** Attempts per request for `5xx` answers and connection failures. Default 3. */
   readonly maxAttempts: number;
+  /** Pauses after each failed attempt. Default `[100, 200]`. */
   readonly backoff: readonly number[];
+  /** The pause after a `429` without `Retry-After`. Default 1,000. */
   readonly defaultRetryAfter: number;
+  /** The longest single pause a `429` can impose. Default 60,000. */
   readonly maxRetryAfter: number;
+  /** The random adjustment of a pause, as a fraction of it. Default 0.25. */
   readonly retryAfterJitter: number;
+  /** The total time one request may spend paused by `429`s. Default 600,000. */
   readonly maxThrottledWait: number;
 
   constructor(options: Partial<RetryPolicyOptions> = {}) {
@@ -38,15 +44,12 @@ export class RetryPolicy {
     if (!(this.retryAfterJitter >= 0 && this.retryAfterJitter < 1)) {
       throw new RangeError("retryAfterJitter must be in [0, 1)");
     }
-    for (const value of [
-      ...this.backoff,
-      this.defaultRetryAfter,
-      this.maxRetryAfter,
-      this.maxThrottledWait,
-    ]) {
-      if (!Number.isFinite(value) || value < 0) {
-        throw new RangeError("durations must be finite and not negative");
-      }
+    const { defaultRetryAfter, maxRetryAfter, maxThrottledWait } = this;
+    const durations = [defaultRetryAfter, maxRetryAfter, maxThrottledWait];
+    if (
+      [...this.backoff, ...durations].some((v) => !(v >= 0 && v < Infinity))
+    ) {
+      throw new RangeError("durations must be finite and not negative");
     }
   }
 
@@ -55,53 +58,105 @@ export class RetryPolicy {
     if (!this.backoff.length) return 0;
     return this.backoff[Math.min(attempt, this.backoff.length) - 1];
   }
+
+  /** The pause a `429` asks for, in milliseconds, bounded and with jitter applied. */
+  retryAfterDelay(headers: Headers): number {
+    const raw = (headers.get("retry-after") ?? "").trim();
+    let delay = this.defaultRetryAfter;
+    if (/^\d+$/.test(raw) && Number(raw) > 0) delay = Number(raw) * 1000;
+    delay = Math.min(delay, this.maxRetryAfter);
+    return delay + (Math.random() * 2 - 1) * this.retryAfterJitter * delay;
+  }
+}
+
+/** The settings of a {@link RetryPolicy}, as given to its constructor. */
+export type RetryPolicyOptions = Omit<
+  RetryPolicy,
+  "backoffFor" | "retryAfterDelay"
+>;
+
+/** Wait `ms` milliseconds, or reject when `signal` aborts first. */
+export function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal!.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 /**
- * The settings of a {@link RetryPolicy}; every one is optional.
+ * A `fetch` that sends the same request (same body, same `Idempotency-Key`)
+ * until it succeeds or the policy gives up, with a time limit per attempt.
  *
- * @category Client
+ * Every answer is returned except a `429` that exhausted the wait budget,
+ * which is thrown as a {@link RateLimitedError}. A `429` pauses every request
+ * sent through the same `fetch`.
  */
-export interface RetryPolicyOptions {
-  /** Attempts per request for `5xx` answers and connection failures. Default 3. */
-  maxAttempts: number;
-  /** Pauses after each failed attempt, in milliseconds. Default `[100, 200]`. */
-  backoff: readonly number[];
-  /** The pause after a `429` without `Retry-After`. Default 1,000. */
-  defaultRetryAfter: number;
-  /** The longest single pause a `429` can impose. Default 60,000. */
-  maxRetryAfter: number;
-  /** The random adjustment of a pause, as a fraction of it. Default 0.25. */
-  retryAfterJitter: number;
-  /** The total time one request may spend paused by `429`s. Default 600,000. */
-  maxThrottledWait: number;
-}
-
-/** The pause a `429` asks for, in milliseconds, bounded and with jitter applied. */
-export function retryAfterDelay(
-  headers: Headers,
+export function retryingFetch(
+  fetchImpl: typeof fetch,
   policy: RetryPolicy,
-  random: () => number = Math.random,
-): number {
-  const raw = (headers.get("retry-after") ?? "").trim();
-  let delay = policy.defaultRetryAfter;
-  if (/^\d+$/.test(raw) && Number(raw) > 0) delay = Number(raw) * 1000;
-  delay = Math.min(delay, policy.maxRetryAfter);
-  const jitter = (random() * 2 - 1) * policy.retryAfterJitter * delay;
-  return delay + jitter;
-}
-
-/** The client-wide pause that a `429` imposes on every request. */
-export class Throttle {
-  private until = 0;
-
-  /** Extend the pause to at least `now + delay`. */
-  slow(now: number, delay: number): void {
-    this.until = Math.max(this.until, now + delay);
-  }
-
-  /** Milliseconds left in the current pause. */
-  remaining(now: number): number {
-    return Math.max(0, this.until - now);
-  }
+  timeout: number,
+): (request: Request) => Promise<Response> {
+  let pausedUntil = 0;
+  return async (request) => {
+    const { signal } = request;
+    let attempt = 1;
+    let throttled = 0;
+    while (true) {
+      await sleep(pausedUntil - Date.now(), signal);
+      signal.throwIfAborted();
+      const limit = AbortSignal.timeout(timeout);
+      let response: Response;
+      try {
+        response = await fetchImpl(request.clone(), {
+          signal: AbortSignal.any([signal, limit]),
+        });
+      } catch (error) {
+        if (signal.aborted) throw signal.reason;
+        if (error instanceof GrepvineError) throw error;
+        if (attempt >= policy.maxAttempts) {
+          throw new TransportError(
+            limit.aborted
+              ? `the request timed out after ${timeout} ms`
+              : error instanceof Error
+                ? error.message
+                : String(error),
+            { cause: error },
+          );
+        }
+        await sleep(policy.backoffFor(attempt++), signal);
+        continue;
+      }
+      if (response.status === 429) {
+        const delay = policy.retryAfterDelay(response.headers);
+        if (throttled + delay > policy.maxThrottledWait) {
+          const body = await response.json().catch(() => undefined);
+          throw mapError(
+            429,
+            response.headers,
+            body,
+            ` (slowed down for ${Math.floor(throttled / 1000)}s without success)`,
+          );
+        }
+        throttled += delay;
+        pausedUntil = Math.max(pausedUntil, Date.now() + delay);
+        await response.body?.cancel();
+        continue;
+      }
+      if (response.status >= 500 && attempt < policy.maxAttempts) {
+        await response.body?.cancel();
+        await sleep(policy.backoffFor(attempt++), signal);
+        continue;
+      }
+      return response;
+    }
+  };
 }
