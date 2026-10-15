@@ -25,7 +25,7 @@
     "test": "vitest run",
     "docs": "typedoc",
     "example:ingest-search": "npm run build && node examples/ingest-search.ts",
-    "example:convenience": "npm run build && node examples/convenience.ts"
+    "example:device-login": "npm run build && node examples/device-login.ts"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.99.0",
