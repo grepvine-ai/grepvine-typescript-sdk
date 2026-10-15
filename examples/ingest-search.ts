@@ -2,8 +2,8 @@
  * Store documents, search them with and without a metadata filter, and clean
  * up the demo index. Run with Node.js 22.18+ after building the SDK.
  *
- * The client finds its endpoint and API key in GREPVINE_API_ENDPOINT and
- * GREPVINE_API_KEY, or in ~/.grepvine/config.yaml after `gv login`.
+ * Reads the API key from GREPVINE_API_KEY and, for a service other than the
+ * default, the endpoint from GREPVINE_API_ENDPOINT.
  */
 import { randomUUID } from "node:crypto";
 import { GrepvineClient, type Index } from "@grepvine/sdk";
@@ -27,7 +27,12 @@ async function main() {
   if (!organization) throw new Error("Set GREPVINE_ORGANIZATION");
   const keepIndex = process.argv.includes("--keep-index");
 
-  const client = new GrepvineClient();
+  const apiKey = process.env.GREPVINE_API_KEY;
+  if (!apiKey) throw new Error("Set GREPVINE_API_KEY");
+  const client = new GrepvineClient({
+    apiKey,
+    endpoint: process.env.GREPVINE_API_ENDPOINT,
+  });
   const index = await client.indexes.create(
     `${organization}/example-ts-${randomUUID().slice(0, 8)}`,
     {

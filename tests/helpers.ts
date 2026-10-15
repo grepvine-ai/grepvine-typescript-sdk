@@ -24,7 +24,6 @@ export function setup(options: { retry?: RetryPolicy; apiKey?: string } = {}) {
   const client = new GrepvineClient({
     apiKey: options.apiKey ?? API_KEY,
     endpoint: ENDPOINT,
-    env: {},
     fetch: fake.fetch,
     retry: options.retry,
   });

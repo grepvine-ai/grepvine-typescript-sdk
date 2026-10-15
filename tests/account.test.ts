@@ -19,9 +19,7 @@ import {
 function anonymous(fake = new FakeGrepvine()) {
   const client = new GrepvineClient({
     endpoint: ENDPOINT,
-    env: {},
     fetch: fake.fetch,
-    configPath: "/nonexistent/grepvine.yaml",
   });
   const sleeps: number[] = [];
   let clock = 0;
@@ -109,7 +107,7 @@ describe("account", () => {
 
     await client.account.logout();
     expect(fake.sessions.size).toBe(0);
-    await expect(client.account.me()).rejects.toThrow("not logged in");
+    await expect(client.account.me()).rejects.toThrow("no API key");
   });
 
   it("uses the API key for me and logout when there is no session", async () => {
