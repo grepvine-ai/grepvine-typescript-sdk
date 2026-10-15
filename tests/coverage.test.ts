@@ -1,50 +1,65 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import * as operations from "../src/generated/sdk.gen.js";
+import { fakeClient, json } from "./fake.js";
 
-// Every API operation has exactly one home in the client: a new operation in
-// spec/source.json fails here until a client method calls it.
+// sdk-operations.json gives every API operation its place on the client; a
+// new operation in spec/source.json fails here until it has an entry.
 
 const source = JSON.parse(readFileSync("spec/source.json", "utf8")) as {
   operations: string[];
 };
-
-function files(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory())
-      return entry.name === "generated" ? [] : files(path);
-    return path.endsWith(".ts") ? [path] : [];
-  });
-}
-
-const code = files("src").map((path) => ({
-  path,
-  text: readFileSync(path, "utf8"),
-}));
-
-it.each(source.operations)(
-  "%s is called by exactly one client method",
-  (operationId) => {
-    const name = Object.keys(operations).find(
-      (exported) => exported.toLowerCase() === operationId.toLowerCase(),
-    );
-    expect(name, `no function for ${operationId}`).toBeDefined();
-    // Calls of the function itself: not a method of that name, nor its declaration.
-    const call = new RegExp(`(?<![\\w.])${name}\\(`, "g");
-    const declaration = new RegExp(`^\\s*(?:async\\s+)?${name}\\(`);
-    const calls = code.flatMap(({ path, text }) =>
-      text
-        .split("\n")
-        .filter((line) => !declaration.test(line))
-        .flatMap((line) => [...line.matchAll(call)].map(() => path)),
-    );
-    expect(calls, `${operationId} calls`).toHaveLength(1);
-    expect(calls[0]).toMatch(/src\/resources\//);
-  },
+const map = JSON.parse(readFileSync("sdk-operations.json", "utf8")) as Record<
+  string,
+  string[]
+>;
+type Operation = { operationId: string; parameters?: { $ref?: string }[] };
+const spec = JSON.parse(readFileSync("spec/openapi.json", "utf8")) as {
+  paths: Record<string, Record<string, Operation>>;
+};
+const routes = Object.entries(spec.paths).flatMap(([path, item]) =>
+  Object.entries(item).map(([method, operation]) => ({
+    path,
+    method: method.toUpperCase(),
+    operationId: operation.operationId,
+    // Browsers may send only the headers a route declares.
+    idempotent: Boolean(
+      operation.parameters?.some(
+        (p) => p.$ref === "#/components/parameters/IdempotencyKey",
+      ),
+    ),
+  })),
 );
 
-it("covers every operation the API defines", () => {
-  expect(Object.keys(operations).length).toBe(source.operations.length);
+it("maps exactly the operations of the API", () => {
+  expect(Object.keys(map).sort()).toEqual([...source.operations].sort());
+  expect(routes.map((route) => route.operationId).sort()).toEqual(
+    [...source.operations].sort(),
+  );
+  const methods = Object.values(map).map((path) => path.join("."));
+  expect(new Set(methods).size).toBe(methods.length);
 });
+
+it.each(routes)(
+  "client.$operationId sends $method $path",
+  async ({ path, method, operationId, idempotent }) => {
+    const { client, requests } = fakeClient(() => json({}));
+    let target: unknown = client;
+    for (const segment of map[operationId]) {
+      target = (target as Record<string, unknown>)[segment];
+    }
+    expect(target, map[operationId].join(".")).toBeTypeOf("function");
+    // Every path parameter is "p"; bodies are left out.
+    const names = [...path.matchAll(/{(\w+)}/g)].map((match) => match[1]);
+    const parameters: Record<string, unknown> = Object.fromEntries(
+      names.map((name) => [name, "p"]),
+    );
+    if (operationId === "putDocument") parameters.content = new Blob(["x"]);
+    await (target as (parameters: object) => Promise<unknown>)(parameters);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].method).toBe(method);
+    expect(new URL(requests[0].url).pathname).toBe(
+      "/v1" + path.replace(/{\w+}/g, "p"),
+    );
+    expect(requests[0].headers.has("Idempotency-Key")).toBe(idempotent);
+  },
+);

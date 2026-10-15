@@ -3,7 +3,7 @@
  * a person to approve it, then list the organizations the new key can see.
  * Run with Node.js 22.18+ after building the SDK.
  */
-import { GrepvineClient } from "@grepvine/sdk";
+import { GrepvineClient, paginate } from "@grepvine/sdk";
 
 async function main() {
   const endpoint = process.env.GREPVINE_API_ENDPOINT;
@@ -18,7 +18,7 @@ async function main() {
   console.log(`Received API key ${key.prefix}…`);
 
   const client = new GrepvineClient({ endpoint, apiKey: key.key });
-  for await (const org of client.organizations.list()) {
+  for await (const org of paginate(client.organizations.list, {})) {
     console.log(`${org.name} (${org.role})`);
   }
 }
