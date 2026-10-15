@@ -1,8 +1,8 @@
 // Local TypeDoc plugin for the Grepvine SDK site.
 //
-// 1. Files under src/generated are rewritten by `npm run generate`, so they can't
-//    carry @category tags. Categories are assigned here from each export's
-//    source file instead, and an explicit @category in a comment still wins.
+// 1. The reference is organized by resource. Each export's @category comes
+//    from its comment, or else from its source file. Nothing from src/generated
+//    may reach the reference; the build fails if it does.
 // 2. The theme stylesheet imports tokens.css, then components.css, the
 //    design-system layers in docs/theme; they are copied next to it.
 // 3. The code-block grammar of the Grepvine design system is two colours on a
@@ -23,12 +23,14 @@ const theme = dirname(fileURLToPath(import.meta.url));
 const layers = ["tokens.css", "components.css"];
 
 const categories = [
-  [/\/src\/convenience\.ts$/, "Convenience client"],
-  [/\/src\/helpers\.ts$/, "Raw client"],
-  [/\/src\/generated\/(client|core)\//, "Raw client"],
-  [/\/src\/generated\/sdk\.gen\.ts$/, "Operations"],
-  [/\/src\/generated\/types\.gen\.ts$/, "API types"],
+  [/\/src\/(client|runtime|retry|paginator|resources\/common)\.ts$/, "Client"],
+  [/\/src\/resources\/organizations\.ts$/, "Organizations"],
+  [/\/src\/resources\/indexes\.ts$/, "Indexes"],
+  [/\/src\/(resources\/documents|metadata)\.ts$/, "Documents"],
+  [/\/src\/errors\.ts$/, "Errors"],
+  [/\/src\/models\.ts$/, "Models"],
 ];
+const generated = /\/src\/generated\//;
 
 // Colours of the github-dark Shiki theme that typedoc.json pins.
 const KEYWORD = "#F97583";
@@ -49,8 +51,13 @@ export function load(app) {
         ReflectionKind.SomeExport,
       );
       for (const reflection of exported) {
-        if (reflection.comment?.getTag("@category")) continue;
         const file = reflection.sources?.[0]?.fullFileName ?? "";
+        if (generated.test(file)) {
+          throw new Error(
+            `${reflection.name} comes from src/generated and must not be documented`,
+          );
+        }
+        if (reflection.comment?.getTag("@category")) continue;
         const match = categories.find(([pattern]) => pattern.test(file));
         if (!match) continue;
         reflection.comment ??= new Comment();
