@@ -79,9 +79,7 @@ client, models and transport are generated with `@hey-api/openapi-ts@0.99.0`
 (types, SDK and Fetch plugins); generation dependencies are development-only.
 
 `scripts/check-package.mjs` packs the package, installs it in a temporary
-directory and exercises the public interface from the installed copy. It
-also fails unless `LICENSE` is the verbatim Apache License 2.0 text and the
-package declares `Apache-2.0` and ships `LICENSE` and `NOTICE`.
+directory and exercises the public interface from the installed copy.
 
 Package names are provisional until registry availability is checked before
 release.
