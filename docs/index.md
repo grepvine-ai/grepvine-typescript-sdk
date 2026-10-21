@@ -406,4 +406,4 @@ the types the API sends and receives, such as {@link Index} and
 
 ## License
 
-Proprietary. See `LICENSE`.
+Licensed under the Apache License 2.0. See `LICENSE` and `NOTICE`.
