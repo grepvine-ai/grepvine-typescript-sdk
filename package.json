@@ -2,11 +2,12 @@
   "name": "@grepvine/sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK for the Grepvine API",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "Apache-2.0",
   "type": "module",
   "files": [
     "dist",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "exports": {
     ".": {

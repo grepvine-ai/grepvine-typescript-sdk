@@ -1,7 +1,23 @@
+import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// SHA-256 of https://www.apache.org/licenses/LICENSE-2.0.txt
+const APACHE_LICENSE_SHA256 =
+  "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30";
+const license = readFileSync("LICENSE");
+assert.equal(
+  createHash("sha256").update(license).digest("hex"),
+  APACHE_LICENSE_SHA256,
+  "LICENSE is not the Apache License 2.0 text",
+);
+assert.equal(
+  JSON.parse(readFileSync("package.json", "utf8")).license,
+  "Apache-2.0",
+);
 
 const directory = mkdtempSync(join(tmpdir(), "grepvine-sdk-npm-"));
 try {
@@ -10,6 +26,10 @@ try {
       encoding: "utf8",
     }),
   )[0];
+  const packedFiles = packed.files.map((file) => file.path);
+  for (const name of ["LICENSE", "NOTICE"]) {
+    assert.ok(packedFiles.includes(name), `package is missing ${name}`);
+  }
   execFileSync(
     "npm",
     [
@@ -86,6 +106,16 @@ console.log("Installed npm package requests passed");
     cwd: directory,
     stdio: "inherit",
   });
+  const installed = join(directory, "node_modules/@grepvine/sdk");
+  assert.deepEqual(readFileSync(join(installed, "LICENSE")), license);
+  assert.deepEqual(
+    readFileSync(join(installed, "NOTICE")),
+    readFileSync("NOTICE"),
+  );
+  assert.equal(
+    JSON.parse(readFileSync(join(installed, "package.json"), "utf8")).license,
+    "Apache-2.0",
+  );
 } finally {
   rmSync(directory, { recursive: true, force: true });
 }
