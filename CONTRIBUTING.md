@@ -1,7 +1,19 @@
-# Contributing
+# Contributing to the Grepvine TypeScript SDK
 
 This guide is for people working on `@grepvine/sdk` itself. To use the SDK,
 read [`README.md`](README.md).
+
+## Reporting issues and proposing changes
+
+Report bugs and ask for features in GitHub issues. Pull requests are welcome
+for the hand-written code, tests, examples and documentation; for anything
+larger, open an issue first. The API itself, and so `spec/openapi.json`, is
+owned by the Grepvine team: to request an API change, open an issue rather
+than editing the snapshot. Report security vulnerabilities privately as
+described in [`SECURITY.md`](SECURITY.md), never in a public issue.
+
+Contributions are accepted under the Apache License 2.0, the license of this
+repository.
 
 ## Layout
 
@@ -72,9 +84,9 @@ node scripts/check-package.mjs
 npm run docs
 ```
 
-Generation reads the exported snapshot and needs only Node.js. Change the
-source contract in Grepvine rather than editing the snapshot, and give a new
-operation its place in `sdk-operations.json` (in both SDK repositories). The
+Generation reads the exported snapshot and needs only Node.js. Never edit the
+snapshot; the Grepvine team changes the contract. Give a new operation its
+place in `sdk-operations.json`, identically in both SDK repositories. The
 client, models and transport are generated with `@hey-api/openapi-ts@0.99.0`
 (types, SDK and Fetch plugins); generation dependencies are development-only.
 
@@ -94,9 +106,9 @@ no running service.
 ### Examples
 
 ```sh
-export GREPVINE_API_ENDPOINT=http://localhost:8080
-export GREPVINE_ORGANIZATION=local
+export GREPVINE_ORGANIZATION=my-org
 export GREPVINE_API_KEY='your-api-key'
+# export GREPVINE_API_ENDPOINT=...      # only for a service other than https://api.grepvine.ai
 npm run example:ingest-search            # add -- --keep-index to keep the index
 npm run example:device-login
 ```
@@ -126,12 +138,12 @@ npm run docs
 
 Open `docs/_build/index.html`; the directory is git-ignored.
 
-The theme in `docs/theme` follows the Grepvine design system in
-the Grepvine design-system repository (private).
-Read `docs/theme/README.md` and the design system's `README.md` before
-changing it.
+The theme lives in `docs/theme`. Read `docs/theme/README.md` before changing
+it.
 
 ## Repository automation
+
+The workflows below are run by the Grepvine team.
 
 The `Regenerate and validate SDK` workflow can be triggered manually. It
 regenerates from the snapshot, runs tests and builds an installed-package
