@@ -2,10 +2,9 @@
 
 - Generated code under `src/generated` is never edited by hand; change the
   generator configuration and run `npm run generate`.
-- The documentation site's theme follows the Grepvine design system in
-  [`grepvine-ai/grepvine-design-system`](https://github.com/grepvine-ai/grepvine-design-system).
-  Before changing anything under `docs/theme`, read `docs/theme/README.md` and
-  the design system's `README.md`.
+- `sdk-operations.json` names every method and is identical in
+  `grepvine-ai/grepvine-python-sdk`; change both together.
+- Before changing anything under `docs/theme`, read `docs/theme/README.md`.
 - Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before changing the client: the
   client and its resources are generated from `sdk-operations.json`,
   hand-written code is limited to the client options, retries, errors,

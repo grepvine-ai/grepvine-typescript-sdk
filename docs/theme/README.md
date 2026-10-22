@@ -1,11 +1,8 @@
 # Documentation theme
 
-The documentation site is styled with the Grepvine design system. The design
-system lives in its own repository,
-[`grepvine-ai/grepvine-design-system`](https://github.com/grepvine-ai/grepvine-design-system),
-and is the source of truth for how the site looks: colour and type tokens,
-components, the logo and icons, and the writing voice. Read its `README.md`
-and the `README.md` of each component you touch before changing the theme.
+The documentation site is styled with the Grepvine design system, which the
+Grepvine team maintains. The files below are copies of its tokens, components
+and assets.
 
 This directory holds only what the TypeDoc build needs, so building the docs
 never reads the design-system repository.
