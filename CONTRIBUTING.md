@@ -127,7 +127,7 @@ npm run docs
 Open `docs/_build/index.html`; the directory is git-ignored.
 
 The theme in `docs/theme` follows the Grepvine design system in
-[`grepvine-ai/grepvine-design-system`](https://github.com/grepvine-ai/grepvine-design-system).
+the Grepvine design-system repository (private).
 Read `docs/theme/README.md` and the design system's `README.md` before
 changing it.
 
@@ -144,9 +144,7 @@ The `Build and publish docs` workflow builds the documentation on every pull
 request and push to `main` without deploying it. Publishing a GitHub release
 (not a pre-release), or running the workflow manually, also deploys the site
 to GitHub Pages, so it always documents the latest release. One-time setup: in
-the repository's Settings → Pages, set Source to GitHub Actions. GitHub Pages
-on a private repository requires a paid plan, and the published site is
-public.
+the repository's Settings → Pages, set Source to GitHub Actions.
 
 The `Build and publish SDK` workflow runs the same checks, builds the
 package, and publishes it to npm. Publishing a GitHub release uploads the

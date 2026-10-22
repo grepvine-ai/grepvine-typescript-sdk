@@ -2,7 +2,7 @@
 
 The documentation site is styled with the Grepvine design system. The design
 system lives in its own repository,
-[`grepvine-ai/grepvine-design-system`](https://github.com/grepvine-ai/grepvine-design-system),
+the Grepvine design-system repository (private),
 and is the source of truth for how the site looks: colour and type tokens,
 components, the logo and icons, and the writing voice. Read its `README.md`
 and the `README.md` of each component you touch before changing the theme.
