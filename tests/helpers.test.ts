@@ -214,7 +214,14 @@ describe("documents.putMany", () => {
         {
           key: "a.md",
           content: "héllo",
-          metadata: { kind: "guide", n: 2, ratio: 0.5, ok: true, when },
+          metadata: {
+            kind: "guide",
+            n: 2,
+            ratio: 0.5,
+            whole: { type: "number", value: 2 },
+            ok: true,
+            when,
+          },
         },
         {
           key: "b.md",
@@ -243,6 +250,7 @@ describe("documents.putMany", () => {
         kind: { type: "string", value: "guide" },
         n: { type: "integer", value: 2 },
         ratio: { type: "number", value: 0.5 },
+        whole: { type: "number", value: 2 },
         ok: { type: "boolean", value: true },
         when: { type: "timestamp", value: "2026-01-02T03:04:05.000Z" },
       },

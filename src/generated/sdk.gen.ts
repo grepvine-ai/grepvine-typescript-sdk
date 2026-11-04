@@ -17,6 +17,8 @@ import type {
   ApproveDeviceAuthorizationResponses,
   ChangePasswordErrors,
   ChangePasswordResponses,
+  CheckInvitationErrors,
+  CheckInvitationResponses,
   CreateApiKeyErrors,
   CreateApiKeyResponses,
   CreateIndexErrors,
@@ -34,6 +36,8 @@ import type {
   DeleteOrganizationResponses,
   DenyDeviceAuthorizationErrors,
   DenyDeviceAuthorizationResponses,
+  GetAuthOptionsErrors,
+  GetAuthOptionsResponses,
   GetCurrentUserErrors,
   GetCurrentUserResponses,
   GetDocumentErrors,
@@ -62,6 +66,7 @@ import type {
   LoginResponses,
   LogoutErrors,
   LogoutResponses,
+  Metadata,
   Name,
   PollDeviceTokenErrors,
   PollDeviceTokenResponses,
@@ -137,13 +142,14 @@ export class Account extends HeyApiClient {
   /**
    * Register a local user
    *
-   * A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address.
+   * A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address. A 403 has code `invitation_required` when registration is by invitation and the request carries none, and code `invitation_invalid` when the invitation it carries was already used, was withdrawn or has expired. A valid invitation is accepted with the registration, and the account joins the organization it names, if any.
    */
   public register<ThrowOnError extends boolean = true>(
     parameters: {
       name: Name;
       email: string;
       password: string;
+      invitation?: string;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<
@@ -160,6 +166,7 @@ export class Account extends HeyApiClient {
             { in: "body", key: "name" },
             { in: "body", key: "email" },
             { in: "body", key: "password" },
+            { in: "body", key: "invitation" },
           ],
         },
       ],
@@ -172,6 +179,69 @@ export class Account extends HeyApiClient {
     >({
       responseStyle: "data",
       url: "/auth/register",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
+   * Get the sign-in options
+   *
+   * How accounts are created on this service. The console reads it to decide whether to offer registration without an invitation.
+   */
+  public authOptions<ThrowOnError extends boolean = true>(
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    GetAuthOptionsResponses,
+    GetAuthOptionsErrors,
+    ThrowOnError,
+    "data"
+  > {
+    return (options?.client ?? this.client).get<
+      GetAuthOptionsResponses,
+      GetAuthOptionsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      url: "/auth/options",
+      ...options,
+    });
+  }
+
+  /**
+   * Check an invitation
+   *
+   * Reports what a pending invitation offers, so the registration form can show it. The token travels in the body, never in the URL. An invitation that was used, withdrawn or has expired is not found.
+   */
+  public checkInvitation<ThrowOnError extends boolean = true>(
+    parameters: {
+      token: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    CheckInvitationResponses,
+    CheckInvitationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "token" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      CheckInvitationResponses,
+      CheckInvitationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      url: "/auth/invitations:check",
       ...options,
       ...params,
       headers: {
@@ -1419,7 +1489,7 @@ export class Documents extends HeyApiClient {
       organization: Name;
       index: IndexName;
       key: string;
-      metadata?: string;
+      metadata?: Metadata;
       content: Blob | File;
     },
     options?: Options<never, ThrowOnError>,

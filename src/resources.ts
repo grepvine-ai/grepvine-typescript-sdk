@@ -83,8 +83,9 @@ export interface DocumentInput {
   key: string;
   content: string | Uint8Array | Blob;
   /**
-   * Fields to store with the document: strings, numbers (whole numbers are
-   * stored as integers), booleans, dates, or values tagged as `{ type, value }`.
+   * Fields to store with the document: strings, numbers, booleans, dates, or
+   * values tagged as `{ type, value }`. Whole numbers are stored as integers;
+   * tag one meant as a number: `{ type: "number", value: 2 }`.
    */
   metadata?: Record<string, string | number | boolean | Date | MetadataValue>;
   /** Store the document only if it still has this revision. */
@@ -280,7 +281,7 @@ export class Documents extends DocumentOperations {
           ...(document.ifNoneMatch && { "If-None-Match": "*" as const }),
           key: document.key,
           content,
-          metadata: JSON.stringify(documentMetadata(document, content.size)),
+          metadata: documentMetadata(document, content.size),
         },
         { signal },
       );

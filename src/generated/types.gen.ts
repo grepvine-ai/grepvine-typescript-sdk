@@ -33,12 +33,47 @@ export type User = {
   name: Name;
   email: string;
   created_at: string;
+  staff_role?: StaffRole;
 };
+
+/**
+ * The account's role on the Grepvine team, when it has one. Omitted for every other account.
+ */
+export type StaffRole = "root" | "support";
 
 export type RegisterRequest = {
   name: Name;
   email: string;
   password: string;
+  /**
+   * The token of the invitation link the account was invited with. Required when registration is by invitation.
+   */
+  invitation?: string;
+};
+
+/**
+ * How accounts are created. `open` lets anyone register; `invite` registers only with an invitation.
+ */
+export type SignupMode = "open" | "invite";
+
+export type AuthOptions = {
+  signup: SignupMode;
+};
+
+export type InvitationCheckRequest = {
+  token: string;
+};
+
+export type InvitationRole = "admin" | "developer" | "reader";
+
+export type InvitationPreview = {
+  /**
+   * The address the invitation was sent to, to prefill the registration form.
+   */
+  email: string;
+  organization?: Name;
+  role?: InvitationRole;
+  expires_at: string;
 };
 
 export type UsernameAvailability = {
@@ -106,6 +141,10 @@ export type Organization = {
   id: string;
   name: Name;
   role: Role;
+  /**
+   * A suspended organization keeps its data, but refuses every operation on its members, indexes, documents and searches until it is resumed. Contact support.
+   */
+  suspended: boolean;
   created_at: string;
 };
 
@@ -124,6 +163,10 @@ export type Member = {
   user: User;
   role: Role;
   created_at: string;
+  /**
+   * When the membership ends, for time-limited access granted by Grepvine support. Omitted for an ordinary membership.
+   */
+  expires_at?: string;
 };
 
 export type MemberPage = {
@@ -211,47 +254,57 @@ export type IndexTagChanges = {
   [key: string]: string | null;
 };
 
-export type StringMetadataValue = {
+export type TaggedStringMetadataValue = {
   type: "string";
   value: string;
 };
 
-export type IntegerMetadataValue = {
+export type TaggedIntegerMetadataValue = {
   type: "integer";
   value: number;
 };
 
-export type NumberMetadataValue = {
+export type TaggedNumberMetadataValue = {
   type: "number";
   value: number;
 };
 
-export type BooleanMetadataValue = {
+export type TaggedBooleanMetadataValue = {
   type: "boolean";
   value: boolean;
 };
 
-export type TimestampMetadataValue = {
+export type TaggedTimestampMetadataValue = {
   type: "timestamp";
   value: string;
 };
 
-export type MetadataValue =
+/**
+ * A metadata value: a plain JSON string, boolean or integer, or a tagged value. A number that is not an
+ * integer, and a timestamp, are always tagged. Any value may be tagged. Responses always use the tagged form.
+ *
+ */
+export type MetadataValue = string | boolean | number | TaggedMetadataValue;
+
+/**
+ * A metadata value with its type named explicitly.
+ */
+export type TaggedMetadataValue =
   | ({
       type: "string";
-    } & StringMetadataValue)
+    } & TaggedStringMetadataValue)
   | ({
       type: "integer";
-    } & IntegerMetadataValue)
+    } & TaggedIntegerMetadataValue)
   | ({
       type: "number";
-    } & NumberMetadataValue)
+    } & TaggedNumberMetadataValue)
   | ({
       type: "boolean";
-    } & BooleanMetadataValue)
+    } & TaggedBooleanMetadataValue)
   | ({
       type: "timestamp";
-    } & TimestampMetadataValue);
+    } & TaggedTimestampMetadataValue);
 
 export type Metadata = {
   [key: string]: MetadataValue;
@@ -259,10 +312,7 @@ export type Metadata = {
 
 export type PutDocumentForm = {
   key: string;
-  /**
-   * A Metadata JSON object.
-   */
-  metadata?: string;
+  metadata?: Metadata;
   /**
    * The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is stored without being searchable.
    */
@@ -465,6 +515,10 @@ export type RegisterUserData = {
     name: Name;
     email: string;
     password: string;
+    /**
+     * The token of the invitation link the account was invited with. Required when registration is by invitation.
+     */
+    invitation?: string;
   };
   path?: never;
   query?: never;
@@ -473,11 +527,15 @@ export type RegisterUserData = {
 
 export type RegisterUserErrors = {
   /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
    * The request conflicts with current state.
    */
   409: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -494,6 +552,66 @@ export type RegisterUserResponses = {
 export type RegisterUserResponse =
   RegisterUserResponses[keyof RegisterUserResponses];
 
+export type GetAuthOptionsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/auth/options";
+};
+
+export type GetAuthOptionsErrors = {
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type GetAuthOptionsError =
+  GetAuthOptionsErrors[keyof GetAuthOptionsErrors];
+
+export type GetAuthOptionsResponses = {
+  /**
+   * The sign-in options.
+   */
+  200: AuthOptions;
+};
+
+export type GetAuthOptionsResponse =
+  GetAuthOptionsResponses[keyof GetAuthOptionsResponses];
+
+export type CheckInvitationData = {
+  body: {
+    token: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/auth/invitations:check";
+};
+
+export type CheckInvitationErrors = {
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type CheckInvitationError =
+  CheckInvitationErrors[keyof CheckInvitationErrors];
+
+export type CheckInvitationResponses = {
+  /**
+   * The pending invitation.
+   */
+  200: InvitationPreview;
+};
+
+export type CheckInvitationResponse =
+  CheckInvitationResponses[keyof CheckInvitationResponses];
+
 export type GetUsernameAvailabilityData = {
   body?: never;
   path: {
@@ -505,7 +623,7 @@ export type GetUsernameAvailabilityData = {
 
 export type GetUsernameAvailabilityErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -542,7 +660,7 @@ export type LoginErrors = {
    */
   401: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -567,7 +685,7 @@ export type LogoutData = {
 
 export type LogoutErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -596,7 +714,7 @@ export type GetCurrentUserErrors = {
    */
   401: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -630,7 +748,7 @@ export type ChangePasswordErrors = {
    */
   401: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -659,7 +777,7 @@ export type StartDeviceAuthorizationData = {
 
 export type StartDeviceAuthorizationErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -692,7 +810,7 @@ export type ApproveDeviceAuthorizationErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -725,7 +843,7 @@ export type DenyDeviceAuthorizationErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -754,11 +872,11 @@ export type PollDeviceTokenData = {
 
 export type PollDeviceTokenErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   400: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -788,7 +906,7 @@ export type ListApiKeysData = {
 
 export type ListApiKeysErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -816,7 +934,7 @@ export type CreateApiKeyData = {
 
 export type CreateApiKeyErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -848,7 +966,7 @@ export type RevokeApiKeyErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -877,7 +995,7 @@ export type ListOrganizationsData = {
 
 export type ListOrganizationsErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -910,7 +1028,7 @@ export type CreateOrganizationErrors = {
    */
   409: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -943,7 +1061,7 @@ export type DeleteOrganizationErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -973,7 +1091,7 @@ export type GetOrganizationErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1005,7 +1123,7 @@ export type ListOrganizationMembersData = {
 
 export type ListOrganizationMembersErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1037,7 +1155,7 @@ export type AddOrganizationMemberData = {
 
 export type AddOrganizationMemberErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1067,7 +1185,7 @@ export type RemoveOrganizationMemberData = {
 
 export type RemoveOrganizationMemberErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1099,7 +1217,7 @@ export type UpdateOrganizationMemberData = {
 
 export type UpdateOrganizationMemberErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1130,7 +1248,7 @@ export type TransferOrganizationOwnershipData = {
 
 export type TransferOrganizationOwnershipErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1166,7 +1284,7 @@ export type ListIndexesData = {
 
 export type ListIndexesErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1202,7 +1320,7 @@ export type CreateIndexErrors = {
    */
   409: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1235,7 +1353,7 @@ export type DeleteIndexErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1265,7 +1383,7 @@ export type GetIndexErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1303,7 +1421,7 @@ export type UpdateIndexErrors = {
    */
   404: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1340,7 +1458,7 @@ export type ListDocumentsData = {
 
 export type ListDocumentsErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1360,10 +1478,7 @@ export type ListDocumentsResponse =
 export type PutDocumentData = {
   body: {
     key: string;
-    /**
-     * A Metadata JSON object.
-     */
-    metadata?: string;
+    metadata?: Metadata;
     /**
      * The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is stored without being searchable.
      */
@@ -1392,7 +1507,7 @@ export type PutDocumentErrors = {
    */
   412: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1434,7 +1549,7 @@ export type DeleteDocumentErrors = {
    */
   412: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1479,7 +1594,7 @@ export type GetDocumentErrors = {
    */
   416: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1522,7 +1637,7 @@ export type PutObjectsErrors = {
    */
   409: Error;
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1555,7 +1670,7 @@ export type DeleteObjectsData = {
 
 export type DeleteObjectsErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };
@@ -1605,7 +1720,7 @@ export type QueryIndexData = {
 
 export type QueryIndexErrors = {
   /**
-   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
    */
   default: Error;
 };

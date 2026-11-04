@@ -204,7 +204,8 @@ document, in input order. Text (a string, or bytes that are valid UTF-8)
 travels as NDJSON in batches of up to 2,048 documents and 16 MiB; other
 content, or text over 16 MiB, is stored one document at a time. Metadata
 values may be strings, numbers, booleans or `Date`s, or values already tagged
-as `{ type, value }`; whole numbers are stored as integers. Every document
+as `{ type, value }`; whole numbers are stored as integers, so tag a whole
+number meant as a number: `{ type: "number", value: 2 }`. Every document
 also gets `path` (its key) and `size` metadata, which your fields override.
 Documents may carry up to 64 metadata fields.
 
@@ -222,7 +223,7 @@ interrupted call safely, give it an `idempotencyKey` and repeat it with the
 same key and documents: the service does not store a document twice.
 
 `documents.put` stores one document from a `Blob` and takes its `metadata` as
-a JSON string; `documents.putBatch` takes an NDJSON body, sent unchanged.
+an object of plain or tagged values; `documents.putBatch` takes an NDJSON body, sent unchanged.
 Documents can be up to 1 GiB. Content that is valid UTF-8 and at most 100 MiB
 is searchable; anything else is stored and served but never matched by a
 search, which a listing's `searchable` reports.

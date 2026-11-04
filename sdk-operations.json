@@ -24,6 +24,8 @@
   "createAPIKey": ["apiKeys", "create"],
   "revokeAPIKey": ["apiKeys", "revoke"],
   "registerUser": ["account", "register"],
+  "getAuthOptions": ["account", "authOptions"],
+  "checkInvitation": ["account", "checkInvitation"],
   "getUsernameAvailability": ["account", "usernameAvailability"],
   "login": ["account", "login"],
   "logout": ["account", "logout"],
