@@ -187,7 +187,8 @@ export type TransferOwnershipRequest = {
   user: Name;
 };
 
-export type IndexState = "creating" | "ready" | "deleting" | "delete_failed";
+export type IndexState =
+  "creating" | "ready" | "recreate_required" | "deleting" | "delete_failed";
 
 /**
  * An index as a listing returns it.
