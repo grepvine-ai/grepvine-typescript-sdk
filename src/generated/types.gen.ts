@@ -306,8 +306,18 @@ export type TaggedMetadataValue =
       type: "timestamp";
     } & TaggedTimestampMetadataValue);
 
+/**
+ * Document metadata as a request sends it. Values are plain or tagged.
+ */
 export type Metadata = {
   [key: string]: MetadataValue;
+};
+
+/**
+ * Document metadata as a response returns it. Every value is tagged with its type.
+ */
+export type TaggedMetadata = {
+  [key: string]: TaggedMetadataValue;
 };
 
 export type PutDocumentForm = {
@@ -356,7 +366,7 @@ export type DocumentSummary = {
   key: string;
   revision: string;
   content_bytes: number;
-  metadata: Metadata;
+  metadata: TaggedMetadata;
   /**
    * When the document's current revision was stored.
    */

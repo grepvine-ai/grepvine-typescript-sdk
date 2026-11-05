@@ -244,6 +244,7 @@ export type {
   StartDeviceAuthorizationResponses,
   TaggedBooleanMetadataValue,
   TaggedIntegerMetadataValue,
+  TaggedMetadata,
   TaggedMetadataValue,
   TaggedNumberMetadataValue,
   TaggedStringMetadataValue,
