@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "@grepvine/sdk",
+  "name": "grepvine",
   "entryPoints": ["src/index.ts"],
   "tsconfig": "tsconfig.build.json",
   "out": "docs/_build",
@@ -11,7 +11,7 @@
   "favicon": "docs/theme/favicon.svg",
   "navigationLinks": {
     "GitHub": "https://github.com/grepvine-ai/grepvine-typescript-sdk",
-    "npm": "https://www.npmjs.com/package/@grepvine/sdk"
+    "npm": "https://www.npmjs.com/package/grepvine"
   },
   "categorizeByGroup": false,
   "categoryOrder": [

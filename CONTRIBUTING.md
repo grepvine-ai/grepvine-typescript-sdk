@@ -1,6 +1,6 @@
 # Contributing to the Grepvine TypeScript SDK
 
-This guide is for people working on `@grepvine/sdk` itself. To use the SDK,
+This guide is for people working on `grepvine` itself. To use the SDK,
 read [`README.md`](README.md).
 
 ## Reporting issues and proposing changes
@@ -163,8 +163,8 @@ package, and publishes it to npm. Publishing a GitHub release uploads the
 tag's version (`v0.2.0` becomes `0.2.0`) under the `latest` dist-tag, or
 `next` for a pre-release. A manual run publishes only a pre-release version
 (`0.2.0-rc.1`) under a non-`latest` dist-tag (default `next`), so
-`npm install @grepvine/sdk` is unaffected until a final release; install the
-candidate with `npm install @grepvine/sdk@next`. Enable `dry_run` to build and
+`npm install grepvine` is unaffected until a final release; install the
+candidate with `npm install grepvine@next`. Enable `dry_run` to build and
 run `npm publish --dry-run` without uploading. Publishing uses npm trusted
 publishing from workflow `publish.yml` in the `npm` environment; an
 `NPM_TOKEN` secret is used instead when set, for example for the first

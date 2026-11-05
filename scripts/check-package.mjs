@@ -29,8 +29,8 @@ try {
     script,
     `
 import assert from "node:assert/strict";
-import * as sdk from "@grepvine/sdk";
-import { GrepvineClient, NotFoundError, PartialBatchError, RetryPolicy, paginate } from "@grepvine/sdk";
+import * as sdk from "grepvine";
+import { GrepvineClient, NotFoundError, PartialBatchError, RetryPolicy, paginate } from "grepvine";
 
 for (const name of ["createClient", "createConfig", "client", "putObjects", "queryIndex", "listOrganizations"]) {
   assert.equal(name in sdk, false, name + " must not be exported");

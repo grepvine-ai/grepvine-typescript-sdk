@@ -1,5 +1,5 @@
 {
-  "name": "@grepvine/sdk",
+  "name": "grepvine",
   "version": "0.1.0",
   "description": "TypeScript SDK for the Grepvine API",
   "license": "Apache-2.0",

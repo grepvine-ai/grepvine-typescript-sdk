@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "@grepvine/sdk": ["./src/index.ts"]
+      "grepvine": ["./src/index.ts"]
     }
   },
   "include": [

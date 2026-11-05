@@ -7,7 +7,7 @@
  * endpoint from GREPVINE_API_ENDPOINT.
  */
 import { randomUUID } from "node:crypto";
-import { GrepvineClient, paginate } from "@grepvine/sdk";
+import { GrepvineClient, paginate } from "grepvine";
 
 async function main() {
   const organization = process.env.GREPVINE_ORGANIZATION;

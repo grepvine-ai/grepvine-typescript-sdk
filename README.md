@@ -5,7 +5,7 @@ text: regular-expression and literal search over every line of every
 document, with metadata filters and paged results.
 
 ```sh
-npm install @grepvine/sdk
+npm install grepvine
 ```
 
 Node.js 22.18 or later, or a modern browser. The package is ESM only and
@@ -24,7 +24,7 @@ Pass your API key, and the endpoint when you use a service other than
 `https://api.grepvine.ai`:
 
 ```ts
-import { GrepvineClient } from "@grepvine/sdk";
+import { GrepvineClient } from "grepvine";
 
 const client = new GrepvineClient({
   apiKey: "gvk_...",
@@ -44,7 +44,7 @@ Every method takes a second argument of request options, such as `signal`, an
 ## Organizations
 
 ```ts
-import { paginate } from "@grepvine/sdk";
+import { paginate } from "grepvine";
 
 for await (const org of paginate(client.organizations.list, {})) {
   console.log(org.name, org.role);

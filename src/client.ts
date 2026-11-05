@@ -76,7 +76,7 @@ function bindMethods<T extends object>(target: T): T {
  * an error answer is thrown as an {@link APIError} subclass.
  *
  * ```ts
- * import { GrepvineClient, paginate } from "@grepvine/sdk";
+ * import { GrepvineClient, paginate } from "grepvine";
  *
  * const client = new GrepvineClient({ apiKey: "gvk_..." });
  * for await (const org of paginate(client.organizations.list, {})) {
