@@ -93,9 +93,6 @@ client, models and transport are generated with `@hey-api/openapi-ts@0.99.0`
 `scripts/check-package.mjs` packs the package, installs it in a temporary
 directory and exercises the public interface from the installed copy.
 
-Package names are provisional until registry availability is checked before
-release.
-
 ### Live tests
 
 Optional live tests create and delete a uniquely named index. Set
@@ -166,6 +163,7 @@ tag's version (`v0.2.0` becomes `0.2.0`) under the `latest` dist-tag, or
 `npm install @grepvine/sdk` is unaffected until a final release; install the
 candidate with `npm install @grepvine/sdk@next`. Enable `dry_run` to build and
 run `npm publish --dry-run` without uploading. Publishing uses npm trusted
-publishing from workflow `publish.yml` in the `npm` environment; an
-`NPM_TOKEN` secret is used instead when set, for example for the first
-publish before a trusted publisher can be configured.
+publishing from workflow `publish.yml` in the `npm` environment, which
+attaches npm provenance; the registry accepts it only when `repository.url`
+in `package.json` matches this repository. An `NPM_TOKEN` secret in the `npm`
+environment, when set, is a fallback if trusted publishing is unavailable.
