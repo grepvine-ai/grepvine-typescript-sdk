@@ -4,9 +4,21 @@ export type ClientOptions = {
   baseUrl: "https://api.grepvine.ai/v1" | (string & {});
 };
 
+/**
+ * A failed request. `code` says what went wrong and is stable; branch on it, not on the message.
+ */
 export type Error = {
+  /**
+   * A stable, machine-readable code, such as `invalid_pattern`, `not_found` or `write_backlog`.
+   */
   code: string;
+  /**
+   * The broad category of the error, such as `validation`, `authentication`, `state` or `capacity`.
+   */
   reason: string;
+  /**
+   * A message for people that says what went wrong and what to do about it.
+   */
   error: string;
 };
 
@@ -14,7 +26,13 @@ export type Error = {
  * A page may hold fewer results than the requested amount, possibly none, while has_next is true; a query page stops at the server's soft time budget and next_page_id resumes exactly after the last candidate it examined. Clients continue while has_next is true.
  */
 export type Pagination = {
+  /**
+   * The token for the next page: pass it as `page`. Empty when has_next is false.
+   */
   next_page_id: string;
+  /**
+   * Whether more results follow. Keep requesting pages until it is false, even after an empty page.
+   */
   has_next: boolean;
 };
 
@@ -28,11 +46,29 @@ export type Name = string;
  */
 export type IndexName = string;
 
+/**
+ * A user account.
+ */
 export type User = {
+  /**
+   * The account's unique ID.
+   */
   id: string;
+  /**
+   * The account's username.
+   */
   name: Name;
+  /**
+   * The account's email address.
+   */
   email: string;
+  /**
+   * When the account was created.
+   */
   created_at: string;
+  /**
+   * The account's role on the Grepvine team. Omitted for every other account.
+   */
   staff_role?: StaffRole;
 };
 
@@ -41,9 +77,21 @@ export type User = {
  */
 export type StaffRole = "root" | "support";
 
+/**
+ * A new local account.
+ */
 export type RegisterRequest = {
+  /**
+   * The username. Accounts and organizations share one namespace.
+   */
   name: Name;
+  /**
+   * The account's email address, at most 320 characters. No other account can use it.
+   */
   email: string;
+  /**
+   * The password, 12 to 1,024 characters.
+   */
   password: string;
   /**
    * The token of the invitation link the account was invited with. Required when registration is by invitation.
@@ -56,112 +104,289 @@ export type RegisterRequest = {
  */
 export type SignupMode = "open" | "invite";
 
+/**
+ * How accounts are created on this service.
+ */
 export type AuthOptions = {
+  /**
+   * Whether anyone can register, or only with an invitation.
+   */
   signup: SignupMode;
 };
 
+/**
+ * The invitation to look up.
+ */
 export type InvitationCheckRequest = {
+  /**
+   * The token from the invitation link.
+   */
   token: string;
 };
 
+/**
+ * The role an invitation grants in its organization.
+ */
 export type InvitationRole = "admin" | "developer" | "reader";
 
+/**
+ * What a pending invitation offers.
+ */
 export type InvitationPreview = {
   /**
    * The address the invitation was sent to, to prefill the registration form.
    */
   email: string;
+  /**
+   * The organization the account joins on registering. Omitted when the invitation names none.
+   */
   organization?: Name;
+  /**
+   * The role the account receives in that organization.
+   */
   role?: InvitationRole;
+  /**
+   * When the invitation expires.
+   */
   expires_at: string;
 };
 
+/**
+ * Whether a username can be registered.
+ */
 export type UsernameAvailability = {
+  /**
+   * The username that was checked.
+   */
   name: Name;
+  /**
+   * Whether an account can register this username now.
+   */
   available: boolean;
 };
 
+/**
+ * Credentials for a new session.
+ */
 export type LoginRequest = {
   /**
    * A username or an email address, matched case-insensitively.
    */
   identifier: string;
+  /**
+   * The account's password.
+   */
   password: string;
 };
 
+/**
+ * The current password and its replacement.
+ */
 export type ChangePasswordRequest = {
+  /**
+   * The account's current password.
+   */
   current_password: string;
+  /**
+   * The new password, 12 to 1,024 characters.
+   */
   new_password: string;
 };
 
+/**
+ * A request to sign in a device.
+ */
 export type DeviceAuthorizationRequest = {
+  /**
+   * The name to give the API key the device receives, 1 to 128 characters.
+   */
   api_key_name: string;
 };
 
+/**
+ * A pending device sign-in: the codes to show the user and to poll with.
+ */
 export type DeviceAuthorization = {
+  /**
+   * The secret code the device polls with. Keep it on the device; never show it.
+   */
   device_code: string;
+  /**
+   * The short code to show the user, who confirms it when approving.
+   */
   user_code: string;
+  /**
+   * The page where the user enters `user_code` and approves the device.
+   */
   verification_uri: string;
+  /**
+   * The same page with `user_code` already filled in, for a link or QR code.
+   */
   verification_uri_complete: string;
+  /**
+   * Seconds until the codes expire.
+   */
   expires_in: number;
+  /**
+   * The minimum number of seconds to wait between polls.
+   */
   interval: number;
 };
 
+/**
+ * The device authorization to approve or deny.
+ */
 export type DeviceDecisionRequest = {
+  /**
+   * The code the device shows. Hyphens, surrounding spaces and case are ignored.
+   */
   user_code: string;
 };
 
+/**
+ * The device code to exchange for an API key.
+ */
 export type DeviceTokenRequest = {
+  /**
+   * The `device_code` from starting the authorization.
+   */
   device_code: string;
 };
 
+/**
+ * A new API key.
+ */
 export type CreateApiKeyRequest = {
+  /**
+   * A name to tell the key apart, 1 to 128 characters.
+   */
   name: string;
 };
 
+/**
+ * An API key, without its secret.
+ */
 export type ApiKey = {
+  /**
+   * The key's unique ID.
+   */
   id: string;
+  /**
+   * The name the key was given.
+   */
   name: string;
+  /**
+   * The first characters of the key, shown to tell keys apart.
+   */
   prefix: string;
+  /**
+   * When the key was created.
+   */
   created_at: string;
+  /**
+   * When the key last authenticated a request. Omitted if it never has.
+   */
   last_used_at?: string;
+  /**
+   * When the key was revoked. Omitted while the key is active.
+   */
   revoked_at?: string;
 };
 
+/**
+ * A new API key with its secret, which is shown only this once.
+ */
 export type ApiKeyCreated = ApiKey & {
+  /**
+   * The secret API key. It is shown only in this response; send it as `Authorization: Bearer <key>`.
+   */
   key: string;
 };
 
+/**
+ * A page of API keys.
+ */
 export type ApiKeyPage = {
+  /**
+   * The API keys on this page.
+   */
   results: Array<ApiKey>;
+  /**
+   * How to request the next page.
+   */
   pagination: Pagination;
 };
 
+/**
+ * An organization, as seen by one of its members.
+ */
 export type Organization = {
+  /**
+   * The organization's unique ID.
+   */
   id: string;
+  /**
+   * The organization's name.
+   */
   name: Name;
+  /**
+   * The authenticated account's role in the organization.
+   */
   role: Role;
   /**
    * A suspended organization keeps its data, but refuses every operation on its members, indexes, documents and searches until it is resumed. Contact support.
    */
   suspended: boolean;
+  /**
+   * When the organization was created.
+   */
   created_at: string;
 };
 
+/**
+ * A page of organizations.
+ */
 export type OrganizationPage = {
+  /**
+   * The organizations on this page.
+   */
   results: Array<Organization>;
+  /**
+   * How to request the next page.
+   */
   pagination: Pagination;
 };
 
+/**
+ * A new organization.
+ */
 export type CreateOrganizationRequest = {
+  /**
+   * The organization's name. Accounts and organizations share one namespace.
+   */
   name: Name;
 };
 
+/**
+ * A member's role in an organization. `owner` can do everything, including deleting the organization and transferring ownership; `admin` also manages members and indexes; `developer` reads, writes and searches documents; `reader` reads and searches them.
+ */
 export type Role = "owner" | "admin" | "developer" | "reader";
 
+/**
+ * A member of an organization.
+ */
 export type Member = {
+  /**
+   * The member's account.
+   */
   user: User;
+  /**
+   * The member's role in the organization.
+   */
   role: Role;
+  /**
+   * When the account became a member.
+   */
   created_at: string;
   /**
    * When the membership ends, for time-limited access granted by Grepvine support. Omitted for an ordinary membership.
@@ -169,24 +394,57 @@ export type Member = {
   expires_at?: string;
 };
 
+/**
+ * A page of organization members.
+ */
 export type MemberPage = {
+  /**
+   * The members on this page.
+   */
   results: Array<Member>;
+  /**
+   * How to request the next page.
+   */
   pagination: Pagination;
 };
 
+/**
+ * The account to add and its role.
+ */
 export type AddMemberRequest = {
+  /**
+   * The username of the account to add.
+   */
   user: Name;
+  /**
+   * The role to grant. `owner` is granted only by transferring ownership.
+   */
   role: "admin" | "developer" | "reader";
 };
 
+/**
+ * The member's new role.
+ */
 export type UpdateMemberRequest = {
+  /**
+   * The new role. `owner` is granted only by transferring ownership.
+   */
   role: "admin" | "developer" | "reader";
 };
 
+/**
+ * The member who becomes the owner.
+ */
 export type TransferOwnershipRequest = {
+  /**
+   * The username of the member who becomes the owner.
+   */
   user: Name;
 };
 
+/**
+ * Where an index is in its life. `creating`: not usable yet. `ready`: the only state that answers searches. `recreate_required`: answers nothing until it is deleted, created again and its documents written again. `deleting`: deletion is in progress. `delete_failed`: deletion did not finish and is retried.
+ */
 export type IndexState =
   "creating" | "ready" | "recreate_required" | "deleting" | "delete_failed";
 
@@ -194,16 +452,49 @@ export type IndexState =
  * An index as a listing returns it.
  */
 export type IndexSummary = {
+  /**
+   * The index's unique ID.
+   */
   id: string;
+  /**
+   * The name of the organization the index belongs to.
+   */
   organization: Name;
+  /**
+   * The index's name.
+   */
   name: IndexName;
+  /**
+   * A stable identifier for the index, currently the same as `id`.
+   */
   canonical_id: string;
+  /**
+   * What the index holds, in Markdown. Empty when none was set.
+   */
   description: IndexDescription;
+  /**
+   * Key/value labels on the index. Empty when none was set.
+   */
   tags: IndexTags;
+  /**
+   * Where the index is in its life. Only a `ready` index answers searches.
+   */
   state: IndexState;
+  /**
+   * The number of documents in the index.
+   */
   document_count: number;
+  /**
+   * The total size of the documents' content, in bytes.
+   */
   content_bytes: number;
+  /**
+   * When the index was created.
+   */
   created_at: string;
+  /**
+   * When a document was last stored or deleted. Omitted when that is not known, such as before the first write.
+   */
   last_updated_at?: string;
 };
 
@@ -217,14 +508,35 @@ export type Index = IndexSummary & {
   optimization_progress_percent?: number;
 };
 
+/**
+ * A page of indexes.
+ */
 export type IndexPage = {
+  /**
+   * The indexes on this page.
+   */
   results: Array<IndexSummary>;
+  /**
+   * How to request the next page.
+   */
   pagination: Pagination;
 };
 
+/**
+ * A new index.
+ */
 export type CreateIndexRequest = {
+  /**
+   * The index's name, unique in the organization regardless of case. It can't be changed later.
+   */
   name: IndexName;
+  /**
+   * What the index holds, in Markdown, at most 16,384 characters. Optional.
+   */
   description?: IndexDescription;
+  /**
+   * Key/value labels for the index, at most 64. Optional.
+   */
   tags?: IndexTags;
 };
 
@@ -232,7 +544,13 @@ export type CreateIndexRequest = {
  * The fields to change. A field that is absent is left as it is; at least one must be present.
  */
 export type UpdateIndexRequest = {
+  /**
+   * The new description, which replaces the old one. An empty string clears it.
+   */
   description?: IndexDescription;
+  /**
+   * Tags to set, by key, and tags to remove, given as null. Other tags are unchanged.
+   */
   tags?: IndexTagChanges;
 };
 
@@ -255,28 +573,73 @@ export type IndexTagChanges = {
   [key: string]: string | null;
 };
 
+/**
+ * A string metadata value with its type named.
+ */
 export type TaggedStringMetadataValue = {
+  /**
+   * The value's type: always `string`.
+   */
   type: "string";
+  /**
+   * The value, at most 8,192 characters.
+   */
   value: string;
 };
 
+/**
+ * A 64-bit integer metadata value with its type named.
+ */
 export type TaggedIntegerMetadataValue = {
+  /**
+   * The value's type: always `integer`.
+   */
   type: "integer";
+  /**
+   * The value, a signed 64-bit integer.
+   */
   value: number;
 };
 
+/**
+ * A floating-point metadata value with its type named.
+ */
 export type TaggedNumberMetadataValue = {
+  /**
+   * The value's type: always `number`.
+   */
   type: "number";
+  /**
+   * The value, a double-precision floating-point number.
+   */
   value: number;
 };
 
+/**
+ * A boolean metadata value with its type named.
+ */
 export type TaggedBooleanMetadataValue = {
+  /**
+   * The value's type: always `boolean`.
+   */
   type: "boolean";
+  /**
+   * The value.
+   */
   value: boolean;
 };
 
+/**
+ * A timestamp metadata value with its type named.
+ */
 export type TaggedTimestampMetadataValue = {
+  /**
+   * The value's type: always `timestamp`.
+   */
   type: "timestamp";
+  /**
+   * The value, an RFC 3339 date and time.
+   */
   value: string;
 };
 
@@ -321,8 +684,17 @@ export type TaggedMetadata = {
   [key: string]: TaggedMetadataValue;
 };
 
+/**
+ * One document to store, sent as multipart form fields.
+ */
 export type PutDocumentForm = {
+  /**
+   * The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components. Storing a key that exists replaces that document.
+   */
   key: string;
+  /**
+   * The document's metadata as a JSON object, at most 64 fields. Optional.
+   */
   metadata?: Metadata;
   /**
    * The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is stored without being searchable.
@@ -330,23 +702,53 @@ export type PutDocumentForm = {
   content: Blob | File;
 };
 
+/**
+ * One document of a batch to store.
+ */
 export type PutObjectRecord = {
+  /**
+   * The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components. Storing a key that exists replaces that document.
+   */
   key: string;
   /**
    * The document text. A batch carries text only, so every document it stores is searchable.
    */
   content: string;
+  /**
+   * The document's metadata, at most 64 fields. Optional.
+   */
   metadata?: Metadata;
+  /**
+   * A revision. The document is stored only if it still has this revision; otherwise its result has the error `precondition_failed`.
+   */
   if_match?: string;
+  /**
+   * Set to `*` to store the document only if no document has this key yet; otherwise its result has the error `precondition_failed`.
+   */
   if_none_match?: "*";
 };
 
+/**
+ * One document of a batch to delete.
+ */
 export type DeleteObjectRecord = {
+  /**
+   * The key of the document to delete.
+   */
   key: string;
+  /**
+   * A revision. The document is deleted only if it still has this revision; otherwise its result has the error `precondition_failed`.
+   */
   if_match?: string;
 };
 
+/**
+ * The documents to delete.
+ */
 export type DeleteObjectsRequest = {
+  /**
+   * The documents to delete, 1 to 2,048.
+   */
   objects: Array<DeleteObjectRecord>;
 };
 
@@ -354,19 +756,49 @@ export type DeleteObjectsRequest = {
  * The outcome of one document. A stored or deleted document has a revision; a document a batch did not change has an error instead.
  */
 export type MutationResult = {
+  /**
+   * The document's key.
+   */
   key: string;
+  /**
+   * The document's revision after the write. Omitted when the document was not changed.
+   */
   revision?: string;
+  /**
+   * Why this document was not changed. Omitted when it was.
+   */
   error?: Error;
 };
 
+/**
+ * The outcome of each document of a batch.
+ */
 export type MutationBatchResult = {
+  /**
+   * One result per document, in request order.
+   */
   results: Array<MutationResult>;
 };
 
+/**
+ * A document as a listing returns it, without its content.
+ */
 export type DocumentSummary = {
+  /**
+   * The document's key.
+   */
   key: string;
+  /**
+   * The document's current revision, an opaque value that changes on every write. Pass it as If-Match to write only if nothing changed since.
+   */
   revision: string;
+  /**
+   * The size of the document's content, in bytes.
+   */
   content_bytes: number;
+  /**
+   * The document's metadata, every value tagged with its type.
+   */
   metadata: TaggedMetadata;
   /**
    * When the document's current revision was stored.
@@ -378,21 +810,51 @@ export type DocumentSummary = {
   searchable: boolean;
 };
 
+/**
+ * A page of a document listing.
+ */
 export type DocumentPage = {
+  /**
+   * The documents on this page, in key byte order.
+   */
   results: Array<DocumentSummary>;
+  /**
+   * With a delimiter, each distinct key prefix that ends at the delimiter, standing for every document under it. Empty without a delimiter.
+   */
   common_prefixes: Array<string>;
+  /**
+   * How to request the next page.
+   */
   pagination: Pagination;
 };
 
+/**
+ * A search: the pattern, how to match it, which documents to search and how much context to return.
+ */
 export type QueryRequest = {
+  /**
+   * What to search for: an RE2 regular expression, or literal text when `mode` is `literal`. Required; at most 8,192 characters of valid UTF-8.
+   */
   pattern: string;
+  /**
+   * How to read the pattern: `regex` (the default) for RE2 syntax, without backreferences or lookaround, or `literal` to match its bytes exactly, with no escaping needed.
+   */
   mode?: "regex" | "literal";
+  /**
+   * Whether case must match. Defaults to true. False matches under Unicode simple case folding; in a regex, `(?i)` does the same for part of the pattern.
+   */
   case_sensitive?: boolean;
+  /**
+   * Match only where the characters on either side of the match aren't word characters: letters, digits or `_`. Defaults to false. Valid only in literal mode.
+   */
   whole_word?: boolean;
   /**
    * Let a match span lines. Without it a pattern matches within one line, `^` and `$` mark the line's edges, and a character class never matches a line break; a pattern that contains a line break is rejected. With it the pattern is matched against the whole document, `^` and `$` still mark line edges, `\A` and `\z` mark the document's edges, and a match may contain line breaks.
    */
   multiline?: boolean;
+  /**
+   * Search only the documents whose metadata matches this expression, such as `path STARTSWITH 'src/' AND size < 1048576`. At most 8,192 characters. Omit it to search every document.
+   */
   filter?: string;
   /**
    * How many lines before each result to return with it, from the same document.
@@ -404,8 +866,17 @@ export type QueryRequest = {
   lines_after?: number;
 };
 
+/**
+ * One match, as a byte range of the document.
+ */
 export type Match = {
+  /**
+   * Byte offset of the match within the document. It starts at byte `offset - text_start_offset` of the result's text.
+   */
   offset: number;
+  /**
+   * The match's length in bytes.
+   */
   length: number;
 };
 
@@ -413,7 +884,13 @@ export type Match = {
  * One match, or several matches that share lines, together with the lines it covers. A result covers one line unless the query set multiline and a match spans lines.
  */
 export type QueryResult = {
+  /**
+   * The key of the document that matched.
+   */
   key: string;
+  /**
+   * The revision of the document that matched.
+   */
   revision: string;
   /**
    * One-based number of the first line the result covers.
@@ -469,22 +946,52 @@ export type QueryResult = {
  * One line near a result. Text is returned whole up to 64 KiB, and up to 64 KiB away from the result; a line that extends past either bound is returned in part and marked truncated.
  */
 export type ContextLine = {
+  /**
+   * One-based number of the line.
+   */
   line_number: number;
+  /**
+   * The line's text, without its line break, up to 64 KiB.
+   */
   text: string;
+  /**
+   * Whether the line was cut.
+   */
   text_truncated: boolean;
 };
 
+/**
+ * A page of search results.
+ */
 export type QueryPage = {
+  /**
+   * The results on this page, sorted by key, then line, then offset.
+   */
   results: Array<QueryResult>;
+  /**
+   * How to request the next page.
+   */
   pagination: Pagination;
 };
 
+/**
+ * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+ */
 export type Amount = number;
 
+/**
+ * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+ */
 export type Page = string;
 
+/**
+ * The organization's name. Any spelling that differs only in case refers to the same organization.
+ */
 export type Organization2 = Name;
 
+/**
+ * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+ */
 export type Index2 = IndexName;
 
 /**
@@ -492,8 +999,14 @@ export type Index2 = IndexName;
  */
 export type IndexPrefix = string;
 
+/**
+ * The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components.
+ */
 export type DocumentKey = string;
 
+/**
+ * Lists only the documents whose keys start with this prefix, compared byte for byte. At most 1,024 characters.
+ */
 export type Prefix = string;
 
 /**
@@ -506,10 +1019,19 @@ export type Delimiter = string;
  */
 export type Range = string;
 
+/**
+ * The member's account name. Any spelling that differs only in case refers to the same account.
+ */
 export type User2 = Name;
 
+/**
+ * The ID of the API key, as the listing returns it.
+ */
 export type ApiKeyId = string;
 
+/**
+ * A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.
+ */
 export type IdempotencyKey = string;
 
 /**
@@ -517,14 +1039,32 @@ export type IdempotencyKey = string;
  */
 export type CsrfToken = string;
 
+/**
+ * A revision. The write applies only if the document still has this revision; otherwise the request fails with 412.
+ */
 export type IfMatch = string;
 
+/**
+ * Set to `*` to store the document only if no document has this key yet; otherwise the request fails with 412.
+ */
 export type IfNoneMatch = "*";
 
 export type RegisterUserData = {
+  /**
+   * A new local account.
+   */
   body: {
+    /**
+     * The username. Accounts and organizations share one namespace.
+     */
     name: Name;
+    /**
+     * The account's email address, at most 320 characters. No other account can use it.
+     */
     email: string;
+    /**
+     * The password, 12 to 1,024 characters.
+     */
     password: string;
     /**
      * The token of the invitation link the account was invited with. Required when registration is by invitation.
@@ -591,7 +1131,13 @@ export type GetAuthOptionsResponse =
   GetAuthOptionsResponses[keyof GetAuthOptionsResponses];
 
 export type CheckInvitationData = {
+  /**
+   * The invitation to look up.
+   */
   body: {
+    /**
+     * The token from the invitation link.
+     */
     token: string;
   };
   path?: never;
@@ -626,6 +1172,9 @@ export type CheckInvitationResponse =
 export type GetUsernameAvailabilityData = {
   body?: never;
   path: {
+    /**
+     * The username to check.
+     */
     name: Name;
   };
   query?: never;
@@ -653,11 +1202,17 @@ export type GetUsernameAvailabilityResponse =
   GetUsernameAvailabilityResponses[keyof GetUsernameAvailabilityResponses];
 
 export type LoginData = {
+  /**
+   * Credentials for a new session.
+   */
   body: {
     /**
      * A username or an email address, matched case-insensitively.
      */
     identifier: string;
+    /**
+     * The account's password.
+     */
     password: string;
   };
   path?: never;
@@ -744,8 +1299,17 @@ export type GetCurrentUserResponse =
   GetCurrentUserResponses[keyof GetCurrentUserResponses];
 
 export type ChangePasswordData = {
+  /**
+   * The current password and its replacement.
+   */
   body: {
+    /**
+     * The account's current password.
+     */
     current_password: string;
+    /**
+     * The new password, 12 to 1,024 characters.
+     */
     new_password: string;
   };
   path?: never;
@@ -778,7 +1342,13 @@ export type ChangePasswordResponse =
   ChangePasswordResponses[keyof ChangePasswordResponses];
 
 export type StartDeviceAuthorizationData = {
+  /**
+   * A request to sign in a device.
+   */
   body: {
+    /**
+     * The name to give the API key the device receives, 1 to 128 characters.
+     */
     api_key_name: string;
   };
   path?: never;
@@ -807,7 +1377,13 @@ export type StartDeviceAuthorizationResponse =
   StartDeviceAuthorizationResponses[keyof StartDeviceAuthorizationResponses];
 
 export type ApproveDeviceAuthorizationData = {
+  /**
+   * The device authorization to approve or deny.
+   */
   body: {
+    /**
+     * The code the device shows. Hyphens, surrounding spaces and case are ignored.
+     */
     user_code: string;
   };
   path?: never;
@@ -840,7 +1416,13 @@ export type ApproveDeviceAuthorizationResponse =
   ApproveDeviceAuthorizationResponses[keyof ApproveDeviceAuthorizationResponses];
 
 export type DenyDeviceAuthorizationData = {
+  /**
+   * The device authorization to approve or deny.
+   */
   body: {
+    /**
+     * The code the device shows. Hyphens, surrounding spaces and case are ignored.
+     */
     user_code: string;
   };
   path?: never;
@@ -873,7 +1455,13 @@ export type DenyDeviceAuthorizationResponse =
   DenyDeviceAuthorizationResponses[keyof DenyDeviceAuthorizationResponses];
 
 export type PollDeviceTokenData = {
+  /**
+   * The device code to exchange for an API key.
+   */
   body: {
+    /**
+     * The `device_code` from starting the authorization.
+     */
     device_code: string;
   };
   path?: never;
@@ -909,7 +1497,13 @@ export type ListApiKeysData = {
   body?: never;
   path?: never;
   query?: {
+    /**
+     * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+     */
     amount?: number;
+    /**
+     * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+     */
     page?: string;
   };
   url: "/api-keys";
@@ -935,7 +1529,13 @@ export type ListApiKeysResponse =
   ListApiKeysResponses[keyof ListApiKeysResponses];
 
 export type CreateApiKeyData = {
+  /**
+   * A new API key.
+   */
   body: {
+    /**
+     * A name to tell the key apart, 1 to 128 characters.
+     */
     name: string;
   };
   path?: never;
@@ -965,6 +1565,9 @@ export type CreateApiKeyResponse =
 export type RevokeApiKeyData = {
   body?: never;
   path: {
+    /**
+     * The ID of the API key, as the listing returns it.
+     */
     api_key_id: string;
   };
   query?: never;
@@ -998,7 +1601,13 @@ export type ListOrganizationsData = {
   body?: never;
   path?: never;
   query?: {
+    /**
+     * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+     */
     amount?: number;
+    /**
+     * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+     */
     page?: string;
   };
   url: "/organizations";
@@ -1025,7 +1634,13 @@ export type ListOrganizationsResponse =
   ListOrganizationsResponses[keyof ListOrganizationsResponses];
 
 export type CreateOrganizationData = {
+  /**
+   * A new organization.
+   */
   body: {
+    /**
+     * The organization's name. Accounts and organizations share one namespace.
+     */
     name: Name;
   };
   path?: never;
@@ -1060,6 +1675,9 @@ export type CreateOrganizationResponse =
 export type DeleteOrganizationData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
   };
   query?: never;
@@ -1090,6 +1708,9 @@ export type DeleteOrganizationResponses = {
 export type GetOrganizationData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
   };
   query?: never;
@@ -1123,10 +1744,19 @@ export type GetOrganizationResponse =
 export type ListOrganizationMembersData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
   };
   query?: {
+    /**
+     * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+     */
     amount?: number;
+    /**
+     * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+     */
     page?: string;
   };
   url: "/organizations/{organization}/members";
@@ -1153,11 +1783,23 @@ export type ListOrganizationMembersResponse =
   ListOrganizationMembersResponses[keyof ListOrganizationMembersResponses];
 
 export type AddOrganizationMemberData = {
+  /**
+   * The account to add and its role.
+   */
   body: {
+    /**
+     * The username of the account to add.
+     */
     user: Name;
+    /**
+     * The role to grant. `owner` is granted only by transferring ownership.
+     */
     role: "admin" | "developer" | "reader";
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
   };
   query?: never;
@@ -1187,7 +1829,13 @@ export type AddOrganizationMemberResponse =
 export type RemoveOrganizationMemberData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The member's account name. Any spelling that differs only in case refers to the same account.
+     */
     user: Name;
   };
   query?: never;
@@ -1215,11 +1863,23 @@ export type RemoveOrganizationMemberResponse =
   RemoveOrganizationMemberResponses[keyof RemoveOrganizationMemberResponses];
 
 export type UpdateOrganizationMemberData = {
+  /**
+   * The member's new role.
+   */
   body: {
+    /**
+     * The new role. `owner` is granted only by transferring ownership.
+     */
     role: "admin" | "developer" | "reader";
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The member's account name. Any spelling that differs only in case refers to the same account.
+     */
     user: Name;
   };
   query?: never;
@@ -1247,10 +1907,19 @@ export type UpdateOrganizationMemberResponse =
   UpdateOrganizationMemberResponses[keyof UpdateOrganizationMemberResponses];
 
 export type TransferOrganizationOwnershipData = {
+  /**
+   * The member who becomes the owner.
+   */
   body: {
+    /**
+     * The username of the member who becomes the owner.
+     */
     user: Name;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
   };
   query?: never;
@@ -1280,10 +1949,19 @@ export type TransferOrganizationOwnershipResponse =
 export type ListIndexesData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
   };
   query?: {
+    /**
+     * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+     */
     amount?: number;
+    /**
+     * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+     */
     page?: string;
     /**
      * Lists only the indexes whose names start with this literal prefix, compared without regard to case. A page token is valid only with the prefix it was issued for.
@@ -1313,12 +1991,27 @@ export type ListIndexesResponse =
   ListIndexesResponses[keyof ListIndexesResponses];
 
 export type CreateIndexData = {
+  /**
+   * A new index.
+   */
   body: {
+    /**
+     * The index's name, unique in the organization regardless of case. It can't be changed later.
+     */
     name: IndexName;
+    /**
+     * What the index holds, in Markdown, at most 16,384 characters. Optional.
+     */
     description?: IndexDescription;
+    /**
+     * Key/value labels for the index, at most 64. Optional.
+     */
     tags?: IndexTags;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
   };
   query?: never;
@@ -1351,7 +2044,13 @@ export type CreateIndexResponse =
 export type DeleteIndexData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: never;
@@ -1381,7 +2080,13 @@ export type DeleteIndexResponses = {
 export type GetIndexData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: never;
@@ -1415,11 +2120,23 @@ export type UpdateIndexData = {
    * The fields to change. A field that is absent is left as it is; at least one must be present.
    */
   body: {
+    /**
+     * The new description, which replaces the old one. An empty string clears it.
+     */
     description?: IndexDescription;
+    /**
+     * Tags to set, by key, and tags to remove, given as null. Other tags are unchanged.
+     */
     tags?: IndexTagChanges;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: never;
@@ -1452,12 +2169,27 @@ export type UpdateIndexResponse =
 export type ListDocumentsData = {
   body?: never;
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: {
+    /**
+     * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+     */
     amount?: number;
+    /**
+     * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+     */
     page?: string;
+    /**
+     * Lists only the documents whose keys start with this prefix, compared byte for byte. At most 1,024 characters.
+     */
     prefix?: string;
     /**
      * Folds documents that share the substring through the first delimiter after prefix into one common prefix.
@@ -1487,8 +2219,17 @@ export type ListDocumentsResponse =
   ListDocumentsResponses[keyof ListDocumentsResponses];
 
 export type PutDocumentData = {
+  /**
+   * One document to store, sent as multipart form fields.
+   */
   body: {
+    /**
+     * The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components. Storing a key that exists replaces that document.
+     */
     key: string;
+    /**
+     * The document's metadata as a JSON object, at most 64 fields. Optional.
+     */
     metadata?: Metadata;
     /**
      * The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is stored without being searchable.
@@ -1496,12 +2237,27 @@ export type PutDocumentData = {
     content: Blob | File;
   };
   headers?: {
+    /**
+     * A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.
+     */
     "Idempotency-Key"?: string;
+    /**
+     * A revision. The write applies only if the document still has this revision; otherwise the request fails with 412.
+     */
     "If-Match"?: string;
+    /**
+     * Set to `*` to store the document only if no document has this key yet; otherwise the request fails with 412.
+     */
     "If-None-Match"?: "*";
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: never;
@@ -1538,12 +2294,27 @@ export type PutDocumentResponse =
 export type DeleteDocumentData = {
   body?: never;
   headers?: {
+    /**
+     * A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.
+     */
     "Idempotency-Key"?: string;
+    /**
+     * A revision. The write applies only if the document still has this revision; otherwise the request fails with 412.
+     */
     "If-Match"?: string;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
+    /**
+     * The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components.
+     */
     key: string;
   };
   query?: never;
@@ -1587,8 +2358,17 @@ export type GetDocumentData = {
     Range?: string;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
+    /**
+     * The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components.
+     */
     key: string;
   };
   query?: never;
@@ -1632,10 +2412,19 @@ export type PutObjectsData = {
    */
   body: string;
   headers?: {
+    /**
+     * A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.
+     */
     "Idempotency-Key"?: string;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: never;
@@ -1665,14 +2454,29 @@ export type PutObjectsResponses = {
 export type PutObjectsResponse = PutObjectsResponses[keyof PutObjectsResponses];
 
 export type DeleteObjectsData = {
+  /**
+   * The documents to delete.
+   */
   body: {
+    /**
+     * The documents to delete, 1 to 2,048.
+     */
     objects: Array<DeleteObjectRecord>;
   };
   headers?: {
+    /**
+     * A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.
+     */
     "Idempotency-Key"?: string;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: never;
@@ -1699,15 +2503,33 @@ export type DeleteObjectsResponse =
   DeleteObjectsResponses[keyof DeleteObjectsResponses];
 
 export type QueryIndexData = {
+  /**
+   * A search: the pattern, how to match it, which documents to search and how much context to return.
+   */
   body: {
+    /**
+     * What to search for: an RE2 regular expression, or literal text when `mode` is `literal`. Required; at most 8,192 characters of valid UTF-8.
+     */
     pattern: string;
+    /**
+     * How to read the pattern: `regex` (the default) for RE2 syntax, without backreferences or lookaround, or `literal` to match its bytes exactly, with no escaping needed.
+     */
     mode?: "regex" | "literal";
+    /**
+     * Whether case must match. Defaults to true. False matches under Unicode simple case folding; in a regex, `(?i)` does the same for part of the pattern.
+     */
     case_sensitive?: boolean;
+    /**
+     * Match only where the characters on either side of the match aren't word characters: letters, digits or `_`. Defaults to false. Valid only in literal mode.
+     */
     whole_word?: boolean;
     /**
      * Let a match span lines. Without it a pattern matches within one line, `^` and `$` mark the line's edges, and a character class never matches a line break; a pattern that contains a line break is rejected. With it the pattern is matched against the whole document, `^` and `$` still mark line edges, `\A` and `\z` mark the document's edges, and a match may contain line breaks.
      */
     multiline?: boolean;
+    /**
+     * Search only the documents whose metadata matches this expression, such as `path STARTSWITH 'src/' AND size < 1048576`. At most 8,192 characters. Omit it to search every document.
+     */
     filter?: string;
     /**
      * How many lines before each result to return with it, from the same document.
@@ -1719,11 +2541,23 @@ export type QueryIndexData = {
     lines_after?: number;
   };
   path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
     organization: Name;
+    /**
+     * The index's name within the organization. Any spelling that differs only in case refers to the same index.
+     */
     index: IndexName;
   };
   query?: {
+    /**
+     * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+     */
     amount?: number;
+    /**
+     * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+     */
     page?: string;
   };
   url: "/organizations/{organization}/indexes/{index}/query";

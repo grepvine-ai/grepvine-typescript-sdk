@@ -254,6 +254,8 @@ export class Account extends HeyApiClient {
 
   /**
    * Check whether a username is available
+   *
+   * Reports whether an account can register this username now. Accounts and organizations share one namespace, so a name either one holds, in any case, is taken. The answer can change before the name is registered.
    */
   public usernameAvailability<ThrowOnError extends boolean = true>(
     parameters: {
@@ -285,6 +287,8 @@ export class Account extends HeyApiClient {
 
   /**
    * Create a user session
+   *
+   * Signs in with a username or email address and a password, and starts a browser session: the response sets the session cookie and returns, in X-Csrf-Token, the token every state change made with that cookie must send. A 401 means the credentials were not accepted. Programs authenticate with an API key instead.
    */
   public login<ThrowOnError extends boolean = true>(
     parameters: {
@@ -324,6 +328,8 @@ export class Account extends HeyApiClient {
 
   /**
    * Revoke the current session
+   *
+   * Ends the session that made the request and clears its cookie. Other sessions and API keys are unaffected.
    */
   public logout<ThrowOnError extends boolean = true>(
     options?: Options<never, ThrowOnError>,
@@ -350,6 +356,8 @@ export class Account extends HeyApiClient {
 
   /**
    * Get the current user
+   *
+   * Returns the account the request authenticates as, whether with a session or an API key. A session request also receives its CSRF token in X-Csrf-Token.
    */
   public me<ThrowOnError extends boolean = true>(
     options?: Options<never, ThrowOnError>,
@@ -381,6 +389,8 @@ export class Account extends HeyApiClient {
 
   /**
    * Change the current password
+   *
+   * Changes the signed-in account's password after checking the current one. Every other session of the account is signed out; the session that made the request stays signed in, and API keys keep working. A 401 means the current password was wrong.
    */
   public changePassword<ThrowOnError extends boolean = true>(
     parameters: {
@@ -435,6 +445,8 @@ export class Account extends HeyApiClient {
 export class DeviceLogin extends HeyApiClient {
   /**
    * Start device authorization
+   *
+   * Starts signing in a device, such as the command-line client, without entering a password on it. Show the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires after `expires_in` seconds.
    */
   public start<ThrowOnError extends boolean = true>(
     parameters: {
@@ -471,6 +483,8 @@ export class DeviceLogin extends HeyApiClient {
 
   /**
    * Approve device authorization
+   *
+   * Approves a pending device authorization for the signed-in account, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. A code that is unknown, already decided or expired is not found.
    */
   public approve<ThrowOnError extends boolean = true>(
     parameters: {
@@ -515,6 +529,8 @@ export class DeviceLogin extends HeyApiClient {
 
   /**
    * Deny device authorization
+   *
+   * Denies a pending device authorization, identified by the code the device shows. The device's next poll fails with code `access_denied`. A code that is unknown, already decided or expired is not found.
    */
   public deny<ThrowOnError extends boolean = true>(
     parameters: {
@@ -559,6 +575,8 @@ export class DeviceLogin extends HeyApiClient {
 
   /**
    * Poll for a device API key
+   *
+   * Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`, and an unknown, expired or already used code with `expired_token`.
    */
   public poll<ThrowOnError extends boolean = true>(
     parameters: {
@@ -597,6 +615,8 @@ export class DeviceLogin extends HeyApiClient {
 export class ApiKeys extends HeyApiClient {
   /**
    * List API keys
+   *
+   * Lists the authenticated account's API keys, oldest first, including revoked ones. The secret key itself is never returned again; `prefix` tells keys apart.
    */
   public list<ThrowOnError extends boolean = true>(
     parameters?: {
@@ -644,6 +664,8 @@ export class ApiKeys extends HeyApiClient {
 
   /**
    * Create an API key
+   *
+   * Creates an API key for the authenticated account. The response is the only time the secret key is shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
    */
   public create<ThrowOnError extends boolean = true>(
     parameters: {
@@ -688,6 +710,8 @@ export class ApiKeys extends HeyApiClient {
 
   /**
    * Revoke an API key
+   *
+   * Revokes one of the authenticated account's API keys. Requests authenticated with it are refused from then on. A key that doesn't exist or belongs to another account is not found.
    */
   public revoke<ThrowOnError extends boolean = true>(
     parameters: {
@@ -729,6 +753,8 @@ export class ApiKeys extends HeyApiClient {
 export class Members extends HeyApiClient {
   /**
    * List organization members
+   *
+   * Lists an organization's members and their roles, ordered by name. Requires the owner or admin role.
    */
   public list<ThrowOnError extends boolean = true>(
     parameters: {
@@ -778,6 +804,8 @@ export class Members extends HeyApiClient {
 
   /**
    * Add an organization member
+   *
+   * Adds an existing account to the organization with the admin, developer or reader role. Requires the owner or admin role. An organization has one owner, changed only by transferring ownership.
    */
   public add<ThrowOnError extends boolean = true>(
     parameters: {
@@ -832,6 +860,8 @@ export class Members extends HeyApiClient {
 
   /**
    * Remove an organization member
+   *
+   * Removes a member from the organization. Requires the owner or admin role. The owner can't be removed; transfer ownership first.
    */
   public remove<ThrowOnError extends boolean = true>(
     parameters: {
@@ -879,6 +909,8 @@ export class Members extends HeyApiClient {
 
   /**
    * Change an organization member role
+   *
+   * Changes a member's role to admin, developer or reader. Requires the owner or admin role. The owner's role changes only by transferring ownership.
    */
   public update<ThrowOnError extends boolean = true>(
     parameters: {
@@ -935,6 +967,8 @@ export class Members extends HeyApiClient {
 export class Organizations extends HeyApiClient {
   /**
    * List organizations
+   *
+   * Lists the organizations the authenticated account belongs to, with its role in each, ordered by name.
    */
   public list<ThrowOnError extends boolean = true>(
     parameters?: {
@@ -982,6 +1016,8 @@ export class Organizations extends HeyApiClient {
 
   /**
    * Create an organization
+   *
+   * Creates an organization owned by the authenticated account. Accounts and organizations share one namespace, so a 409 means an account or organization already holds the name, in any case.
    */
   public create<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1026,6 +1062,8 @@ export class Organizations extends HeyApiClient {
 
   /**
    * Delete an organization
+   *
+   * Starts deleting an organization with all its indexes and documents. Only the owner can delete it. The deletion finishes in the background and can't be undone.
    */
   public delete<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1065,6 +1103,8 @@ export class Organizations extends HeyApiClient {
 
   /**
    * Get an organization
+   *
+   * Returns an organization the authenticated account belongs to, with its role there. It answers for a suspended organization too, and reports `suspended`.
    */
   public get<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1104,6 +1144,8 @@ export class Organizations extends HeyApiClient {
 
   /**
    * Transfer organization ownership
+   *
+   * Makes another member the owner. Only the owner can transfer ownership, and the previous owner stays a member with the admin role. The new owner must already be a member, and not one with time-limited access.
    */
   public transferOwnership<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1163,6 +1205,8 @@ export class Organizations extends HeyApiClient {
 export class Indexes extends HeyApiClient {
   /**
    * List indexes
+   *
+   * Lists the organization's indexes, ordered by name. Any member can list them.
    */
   public list<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1214,6 +1258,8 @@ export class Indexes extends HeyApiClient {
 
   /**
    * Create an index
+   *
+   * Creates an empty index. Requires the owner or admin role. A new index is usually `ready` in the response; if it is still `creating`, read it until it is `ready`. A 409 means the organization already has an index with that name, in any case.
    */
   public create<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1270,6 +1316,8 @@ export class Indexes extends HeyApiClient {
 
   /**
    * Delete an index
+   *
+   * Starts deleting an index and all its documents. Requires the owner or admin role. The index is `deleting` until the deletion finishes in the background, and it can't be undone.
    */
   public delete<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1317,6 +1365,8 @@ export class Indexes extends HeyApiClient {
 
   /**
    * Get an index
+   *
+   * Returns one index with its current state, document count and size, and the progress of its background optimization while one runs. Any member can read it.
    */
   public get<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1419,6 +1469,8 @@ export class Indexes extends HeyApiClient {
 export class Documents extends HeyApiClient {
   /**
    * List documents
+   *
+   * Lists documents in key byte order, with each one's revision, size, metadata and whether a search can match it. Narrow the listing with `prefix`, and add `delimiter` to browse keys like a directory tree: keys that share the part up to the next delimiter are returned once, in `common_prefixes`.
    */
   public list<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1545,6 +1597,8 @@ export class Documents extends HeyApiClient {
 
   /**
    * Delete one document
+   *
+   * Deletes one document. Send If-Match with a revision to delete it only if it still has that revision. Retrying with the same Idempotency-Key returns the original result. Once acknowledged, the document no longer matches any search.
    */
   public delete<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1598,6 +1652,8 @@ export class Documents extends HeyApiClient {
 
   /**
    * Get a document
+   *
+   * Returns a document's content exactly as it was stored, its revision in the ETag header and its metadata in the X-Grepvine-Metadata header. Send a Range header to read one byte range; the response is then 206, or 416 when the range lies outside the document.
    */
   public get<ThrowOnError extends boolean = true>(
     parameters: {
@@ -1778,6 +1834,8 @@ export class Documents extends HeyApiClient {
 export class Search extends HeyApiClient {
   /**
    * Search an index
+   *
+   * Searches every searchable document in the index for a regular expression or literal text, and returns each match with the lines it covers, sorted by key, then line, then offset. A metadata filter restricts the search to matching documents, and context lines can be returned around each result. A pattern or filter that doesn't parse is rejected with 400 and code `invalid_pattern` or `invalid_filter`. Continue with `page` while `has_next` is true: a page can be empty while more results follow.
    */
   public query<ThrowOnError extends boolean = true>(
     parameters: {
