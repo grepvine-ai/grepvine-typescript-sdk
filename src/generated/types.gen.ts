@@ -20,6 +20,29 @@ export type Error = {
    * A message for people that says what went wrong and what to do about it.
    */
   error: string;
+  /**
+   * Structured information about the error. Omitted when there is none.
+   */
+  details?: Array<ErrorDetail>;
+};
+
+/**
+ * One piece of information about an error. `type` names what it is and which `metadata` keys it carries;
+ * clients ignore types they do not know. `missing_permission`: the API key lacks the permission
+ * `metadata.permission` names.
+ *
+ */
+export type ErrorDetail = {
+  /**
+   * What the detail is, such as `missing_permission`.
+   */
+  type: string;
+  /**
+   * The detail's values, by key.
+   */
+  metadata: {
+    [key: string]: string;
+  };
 };
 
 /**
@@ -194,13 +217,208 @@ export type ChangePasswordRequest = {
 };
 
 /**
- * A request to sign in a device.
+ * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit.
  */
 export type DeviceAuthorizationRequest = {
   /**
    * The name to give the API key the device receives, 1 to 128 characters.
    */
   api_key_name: string;
+  /**
+   * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  permissions: Permissions;
+  /**
+   * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+   */
+  expires_at?: string;
+};
+
+/**
+ * What a pending device authorization asks for.
+ */
+export type PendingDeviceAuthorization = {
+  /**
+   * The name the key the device receives will have.
+   */
+  api_key_name: string;
+  /**
+   * The one organization the device asks for. Omitted when it asks for every organization of the account.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  permissions: Permissions;
+  /**
+   * When the key the device receives stops working. Omitted when it never expires.
+   */
+  expires_at?: string;
+};
+
+/**
+ * The device authorization to approve, and optionally the scope to grant.
+ */
+export type DeviceApprovalRequest = {
+  /**
+   * The code the device shows. Hyphens, surrounding spaces and case are ignored.
+   */
+  user_code: string;
+  /**
+   * The scope to grant instead of the one the device asked for, as a whole. Without it, the device's request is approved as asked.
+   */
+  scope?: KeyScope;
+};
+
+/**
+ * What a key reaches and may do. A field left out sets no limit.
+ */
+export type KeyScope = {
+  /**
+   * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  permissions: Permissions;
+  /**
+   * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+   */
+  expires_at?: string;
+};
+
+/**
+ * An app's OAuth sign-in request, with the parameters it sent to the authorization endpoint.
+ */
+export type OAuthAuthorizationRequest = {
+  /**
+   * Must be `code`.
+   */
+  response_type: string;
+  /**
+   * The app's client ID: the HTTPS address of its client metadata document.
+   */
+  client_id: string;
+  /**
+   * Where the app receives the answer; one of the addresses its metadata document lists.
+   */
+  redirect_uri: string;
+  /**
+   * The PKCE code challenge, 43 to 128 characters.
+   */
+  code_challenge: string;
+  /**
+   * Must be `S256`.
+   */
+  code_challenge_method: string;
+  /**
+   * The MCP server the app signs in to.
+   */
+  resource: string;
+  /**
+   * A value the app sent, returned to it unchanged, at most 1,024 characters.
+   */
+  state?: string;
+  /**
+   * The space-separated scopes the app asked for.
+   */
+  scope?: string;
+};
+
+/**
+ * Who an app signing in is and what it asks for. The name is the app's own and is not verified; the host is where its metadata document is served.
+ */
+export type PendingOAuthAuthorization = {
+  /**
+   * The name the app gives itself.
+   */
+  client_name: string;
+  /**
+   * The host that serves the app's client metadata document.
+   */
+  client_host: string;
+  /**
+   * The host the answer is sent to.
+   */
+  redirect_host: string;
+  /**
+   * Whether the answer is sent to this computer, as a desktop or command-line app receives it.
+   */
+  loopback_redirect: boolean;
+  permissions: Permissions;
+};
+
+/**
+ * What a connection reaches and may do. A field left out sets no limit.
+ */
+export type ConnectionScope = {
+  /**
+   * The one organization the connection reaches. Omitted for every organization of the account. A list of indexes needs one.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  permissions: Permissions;
+};
+
+/**
+ * The sign-in request to approve and the scope to grant it.
+ */
+export type OAuthApprovalRequest = {
+  request: OAuthAuthorizationRequest;
+  scope: ConnectionScope;
+};
+
+/**
+ * The sign-in request to deny.
+ */
+export type OAuthDenialRequest = {
+  request: OAuthAuthorizationRequest;
+};
+
+/**
+ * Where to send the browser to answer the app.
+ */
+export type OAuthRedirect = {
+  /**
+   * The app's address, carrying the answer.
+   */
+  redirect_to: string;
+};
+
+/**
+ * An app the account connected, and what it reaches and may do.
+ */
+export type Connection = {
+  id: string;
+  /**
+   * The name the app gave itself when it was connected.
+   */
+  client_name: string;
+  /**
+   * The host that serves the app's client metadata document.
+   */
+  client_host: string;
+  /**
+   * The one organization the connection reaches. Omitted for every organization of the account.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  permissions: Permissions;
+  created_at: string;
+  /**
+   * When the app last signed in or renewed its access.
+   */
+  last_used_at: string;
+  /**
+   * When the connection stops working unless the app keeps using it.
+   */
+  expires_at: string;
+};
+
+/**
+ * The account's connections.
+ */
+export type ConnectionPage = {
+  connections: Array<Connection>;
 };
 
 /**
@@ -254,13 +472,50 @@ export type DeviceTokenRequest = {
 };
 
 /**
- * A new API key.
+ * A permission a key can carry. A key never does more than its account's role allows in an organization.
+ * `search` searches an index; `read` reads and lists its documents; `write` stores and deletes documents;
+ * `create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.
+ * `manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the
+ * organization. Both need a key scoped to one organization.
+ *
+ */
+export type Permission =
+  | "search"
+  | "read"
+  | "write"
+  | "create_index"
+  | "manage_index"
+  | "manage_members"
+  | "manage_organization";
+
+/**
+ * The permissions a key carries, each named once.
+ */
+export type Permissions = Array<Permission>;
+
+/**
+ * The indexes a key reaches, by name, in the key's one organization. Omitted for every index of its organizations, including indexes created later. A request names at least one; a key's list is empty once every index it named is deleted.
+ */
+export type IndexScope = Array<IndexName>;
+
+/**
+ * Creates an API key. A scope field left out sets no limit.
  */
 export type CreateApiKeyRequest = {
   /**
    * A name to tell the key apart, 1 to 128 characters.
    */
   name: string;
+  /**
+   * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  permissions: Permissions;
+  /**
+   * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+   */
+  expires_at?: string;
 };
 
 /**
@@ -280,9 +535,22 @@ export type ApiKey = {
    */
   prefix: string;
   /**
+   * The one organization the key reaches. Omitted when it reaches every organization of the account.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  /**
+   * What the key may do. May be empty on a revoked key.
+   */
+  permissions: Array<Permission>;
+  /**
    * When the key was created.
    */
   created_at: string;
+  /**
+   * When the key stops working. Omitted when it never expires.
+   */
+  expires_at?: string;
   /**
    * When the key last authenticated a request. Omitted if it never has.
    */
@@ -502,6 +770,10 @@ export type IndexSummary = {
  * An index as a read of that one index returns it, which adds the progress of its background optimization.
  */
 export type Index = IndexSummary & {
+  /**
+   * What the caller may do with this index, among `search`, `read`, `write` and `manage_index`.
+   */
+  permissions: Array<Permission>;
   /**
    * How far the background optimization of this index has progressed, as a percentage. Omitted when no optimization is running.
    */
@@ -1030,6 +1302,11 @@ export type User2 = Name;
 export type ApiKeyId = string;
 
 /**
+ * The ID of the connection, as the listing returns it.
+ */
+export type ConnectionId = string;
+
+/**
  * A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.
  */
 export type IdempotencyKey = string;
@@ -1343,13 +1620,23 @@ export type ChangePasswordResponse =
 
 export type StartDeviceAuthorizationData = {
   /**
-   * A request to sign in a device.
+   * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit.
    */
   body: {
     /**
      * The name to give the API key the device receives, 1 to 128 characters.
      */
     api_key_name: string;
+    /**
+     * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
+     */
+    organization?: Name;
+    indexes?: IndexScope;
+    permissions: Permissions;
+    /**
+     * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+     */
+    expires_at?: string;
   };
   path?: never;
   query?: never;
@@ -1376,7 +1663,7 @@ export type StartDeviceAuthorizationResponses = {
 export type StartDeviceAuthorizationResponse =
   StartDeviceAuthorizationResponses[keyof StartDeviceAuthorizationResponses];
 
-export type ApproveDeviceAuthorizationData = {
+export type GetDeviceAuthorizationData = {
   /**
    * The device authorization to approve or deny.
    */
@@ -1385,6 +1672,53 @@ export type ApproveDeviceAuthorizationData = {
      * The code the device shows. Hyphens, surrounding spaces and case are ignored.
      */
     user_code: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/device/authorizations/lookup";
+};
+
+export type GetDeviceAuthorizationErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type GetDeviceAuthorizationError =
+  GetDeviceAuthorizationErrors[keyof GetDeviceAuthorizationErrors];
+
+export type GetDeviceAuthorizationResponses = {
+  /**
+   * The pending device authorization.
+   */
+  200: PendingDeviceAuthorization;
+};
+
+export type GetDeviceAuthorizationResponse =
+  GetDeviceAuthorizationResponses[keyof GetDeviceAuthorizationResponses];
+
+export type ApproveDeviceAuthorizationData = {
+  /**
+   * The device authorization to approve, and optionally the scope to grant.
+   */
+  body: {
+    /**
+     * The code the device shows. Hyphens, surrounding spaces and case are ignored.
+     */
+    user_code: string;
+    /**
+     * The scope to grant instead of the one the device asked for, as a whole. Without it, the device's request is approved as asked.
+     */
+    scope?: KeyScope;
   };
   path?: never;
   query?: never;
@@ -1493,6 +1827,77 @@ export type PollDeviceTokenResponses = {
 export type PollDeviceTokenResponse =
   PollDeviceTokenResponses[keyof PollDeviceTokenResponses];
 
+export type ListConnectionsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/connections";
+};
+
+export type ListConnectionsErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type ListConnectionsError =
+  ListConnectionsErrors[keyof ListConnectionsErrors];
+
+export type ListConnectionsResponses = {
+  /**
+   * The connections.
+   */
+  200: ConnectionPage;
+};
+
+export type ListConnectionsResponse =
+  ListConnectionsResponses[keyof ListConnectionsResponses];
+
+export type RevokeConnectionData = {
+  body?: never;
+  path: {
+    /**
+     * The ID of the connection, as the listing returns it.
+     */
+    connection_id: string;
+  };
+  query?: never;
+  url: "/connections/{connection_id}";
+};
+
+export type RevokeConnectionErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type RevokeConnectionError =
+  RevokeConnectionErrors[keyof RevokeConnectionErrors];
+
+export type RevokeConnectionResponses = {
+  /**
+   * The connection was revoked.
+   */
+  204: void;
+};
+
+export type RevokeConnectionResponse =
+  RevokeConnectionResponses[keyof RevokeConnectionResponses];
+
 export type ListApiKeysData = {
   body?: never;
   path?: never;
@@ -1530,13 +1935,23 @@ export type ListApiKeysResponse =
 
 export type CreateApiKeyData = {
   /**
-   * A new API key.
+   * Creates an API key. A scope field left out sets no limit.
    */
   body: {
     /**
      * A name to tell the key apart, 1 to 128 characters.
      */
     name: string;
+    /**
+     * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
+     */
+    organization?: Name;
+    indexes?: IndexScope;
+    permissions: Permissions;
+    /**
+     * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+     */
+    expires_at?: string;
   };
   path?: never;
   query?: never;

@@ -34,5 +34,11 @@
   "startDeviceAuthorization": ["deviceLogin", "start"],
   "approveDeviceAuthorization": ["deviceLogin", "approve"],
   "denyDeviceAuthorization": ["deviceLogin", "deny"],
-  "pollDeviceToken": ["deviceLogin", "poll"]
+  "pollDeviceToken": ["deviceLogin", "poll"],
+  "getDeviceAuthorization": ["deviceLogin", "get"],
+  "listConnections": ["connections", "list"],
+  "revokeConnection": ["connections", "revoke"],
+  "lookupOAuthAuthorization": null,
+  "approveOAuthAuthorization": null,
+  "denyOAuthAuthorization": null
 }

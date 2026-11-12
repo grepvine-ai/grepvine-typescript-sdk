@@ -8,9 +8,10 @@ import { fakeClient, json } from "./fake.js";
 const source = JSON.parse(readFileSync("spec/source.json", "utf8")) as {
   operations: string[];
 };
+// null keeps an operation out of the SDK.
 const map = JSON.parse(readFileSync("sdk-operations.json", "utf8")) as Record<
   string,
-  string[]
+  string[] | null
 >;
 type Operation = { operationId: string; parameters?: { $ref?: string }[] };
 const spec = JSON.parse(readFileSync("spec/openapi.json", "utf8")) as {
@@ -18,6 +19,7 @@ const spec = JSON.parse(readFileSync("spec/openapi.json", "utf8")) as {
 };
 const routes = Object.entries(spec.paths).flatMap(([path, item]) =>
   Object.entries(item).map(([method, operation]) => ({
+    mapped: map[operation.operationId],
     path,
     method: method.toUpperCase(),
     operationId: operation.operationId,
@@ -35,19 +37,22 @@ it("maps exactly the operations of the API", () => {
   expect(routes.map((route) => route.operationId).sort()).toEqual(
     [...source.operations].sort(),
   );
-  const methods = Object.values(map).map((path) => path.join("."));
+  const methods = Object.values(map)
+    .filter((path) => path !== null)
+    .map((path) => path.join("."));
   expect(new Set(methods).size).toBe(methods.length);
 });
 
-it.each(routes)(
+it.each(routes.filter((route) => route.mapped))(
   "client.$operationId sends $method $path",
   async ({ path, method, operationId, idempotent }) => {
     const { client, requests } = fakeClient(() => json({}));
     let target: unknown = client;
-    for (const segment of map[operationId]) {
+    const mapped = map[operationId]!;
+    for (const segment of mapped) {
       target = (target as Record<string, unknown>)[segment];
     }
-    expect(target, map[operationId].join(".")).toBeTypeOf("function");
+    expect(target, mapped.join(".")).toBeTypeOf("function");
     // Every path parameter is "p"; bodies are left out.
     const names = [...path.matchAll(/{(\w+)}/g)].map((match) => match[1]);
     const parameters: Record<string, unknown> = Object.fromEntries(

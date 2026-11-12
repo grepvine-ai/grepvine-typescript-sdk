@@ -260,21 +260,21 @@ const { results, pagination } = await client.indexes.list({
 ## Errors
 
 Every error is a `GrepvineError`. Errors from the service are `APIError`
-subclasses with `statusCode`, `code`, `reason`, `message`, `requestId` and
-`retryAfter`:
+subclasses with `statusCode`, `code`, `reason`, `message`, `requestId`,
+`details` and `retryAfter`:
 
-| Error                      | When                                                                                            |
-| -------------------------- | ----------------------------------------------------------------------------------------------- |
-| `InvalidRequestError`      | The request was rejected; fix the input. `InvalidPageError` for a bad page token.               |
-| `AuthenticationError`      | The API key or session is missing or not valid.                                                 |
-| `PermissionDeniedError`    | The caller may not perform the action.                                                          |
-| `NotFoundError`            | The resource does not exist or is not visible.                                                  |
-| `ConflictError`            | The request conflicts with the current state, such as creating an index that exists.            |
-| `PreconditionFailedError`  | An `If-Match` or `If-None-Match` condition failed.                                              |
-| `PayloadTooLargeError`     | A document or batch is over its size limit.                                                     |
-| `RangeNotSatisfiableError` | A byte range does not overlap the document.                                                     |
-| `RateLimitedError`         | The service kept asking the client to slow down for longer than the client was willing to wait. |
-| `ServerError`              | The service failed on every attempt.                                                            |
+| Error                      | When                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `InvalidRequestError`      | The request was rejected; fix the input. `InvalidPageError` for a bad page token.                                                                                        |
+| `AuthenticationError`      | The API key or session is missing or not valid.                                                                                                                          |
+| `PermissionDeniedError`    | The caller may not perform the action. When the API key lacks a permission, `details` has `{ type: "missing_permission", metadata: { permission } }`; get a key with it. |
+| `NotFoundError`            | The resource does not exist or is not visible.                                                                                                                           |
+| `ConflictError`            | The request conflicts with the current state, such as creating an index that exists.                                                                                     |
+| `PreconditionFailedError`  | An `If-Match` or `If-None-Match` condition failed.                                                                                                                       |
+| `PayloadTooLargeError`     | A document or batch is over its size limit.                                                                                                                              |
+| `RangeNotSatisfiableError` | A byte range does not overlap the document.                                                                                                                              |
+| `RateLimitedError`         | The service kept asking the client to slow down for longer than the client was willing to wait.                                                                          |
+| `ServerError`              | The service failed on every attempt.                                                                                                                                     |
 
 `ConfigurationError` means the endpoint is not usable. `TransportError` means
 the request could not be delivered, or an attempt outlasted `timeout`.
@@ -306,16 +306,33 @@ const index = await client.indexes.get(
 
 ## API keys
 
+Only a session (see [Account](#account)) can create, list or revoke API keys,
+not an API key. A key reaches one organization or every one of the
+account's, a list of indexes or all of them, with a set of permissions, until
+it expires. A field left out sets no limit, and a key never does more than
+its account's role allows. The permissions are `search`, `read`, `write`,
+`create_index` (needs every index in scope), `manage_index`, and
+`manage_members` and `manage_organization` (both need one organization).
+
 ```ts
-const created = await client.apiKeys.create({ name: "ci" });
+const created = await client.apiKeys.create({
+  name: "ci",
+  permissions: ["search", "read", "write"],
+  organization: "acme",
+  indexes: ["logs"],
+  expires_at: new Date(Date.now() + 90 * 86_400_000).toISOString(), // at most a year
+});
 console.log(created.key); // shown only this once
 
 for await (const key of paginate(client.apiKeys.list, {})) {
-  console.log(key.name, key.prefix, key.revoked_at ?? "active");
+  console.log(key.name, key.permissions, key.revoked_at ?? "active");
 }
 
 await client.apiKeys.revoke({ api_key_id: created.id });
 ```
+
+`client.connections` lists and revokes the apps a signed-in user connected
+through OAuth sign-in, such as MCP clients, with a session too.
 
 ## Account
 
@@ -347,7 +364,10 @@ the service must allow the page's origin.
 ```ts
 const client = new GrepvineClient({ endpoint: "https://grepvine.example.com" });
 await client.account.login({ identifier: "alice", password });
-const key = await client.apiKeys.create({ name: "laptop" });
+const key = await client.apiKeys.create({
+  name: "laptop",
+  permissions: ["search", "read"],
+});
 await client.account.logout();
 ```
 
@@ -364,6 +384,7 @@ down when the service asks, until the key is issued:
 const device = new GrepvineClient(); // no API key needed to start a login
 const key = await device.deviceLogin.authorize({
   apiKeyName: "build agent",
+  permissions: ["search", "read"], // and optionally organization, indexes, expiresAt
   onCode: ({ verification_uri_complete, user_code }) =>
     console.log(`Open ${verification_uri_complete} and enter ${user_code}`),
   timeout: 5 * 60_000, // optional; by default, until the login expires
@@ -371,12 +392,14 @@ const key = await device.deviceLogin.authorize({
 const client = new GrepvineClient({ apiKey: key.key });
 ```
 
-A denied login throws `InvalidRequestError` with code `"access_denied"`; one
+The person approving sees the scope the device asks for and may grant a
+narrower or wider one, so check what the returned key reaches. A denied login throws `InvalidRequestError` with code `"access_denied"`; one
 that expires, or outlasts `timeout`, throws `GrepvineError`. The steps are
-also available one at a time: `start({ api_key_name })`, then
+also available one at a time: `start({ api_key_name, permissions })`, then
 `poll({ device_code })` until it returns the key; until then it throws
 `InvalidRequestError` with code `"authorization_pending"` or `"slow_down"`.
-The person approving uses a client with a session or an API key:
+The person approving uses a client with a session; `get` shows what the
+device asks for, and `approve` grants it, or `scope` instead as a whole:
 
 ```ts
 await approver.deviceLogin.approve({ user_code: "ABCD-EFGH" }); // or deny(...)

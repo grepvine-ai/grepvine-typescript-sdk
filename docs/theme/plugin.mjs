@@ -54,10 +54,12 @@ const operations = new Map(
     JSON.parse(
       readFileSync(new URL("../../sdk-operations.json", import.meta.url)),
     ),
-  ).map(([operationId, path]) => [
-    operationId.toLowerCase(),
-    resources[path[0]],
-  ]),
+  )
+    .filter(([, path]) => path !== null)
+    .map(([operationId, path]) => [
+      operationId.toLowerCase(),
+      resources[path[0]],
+    ]),
 );
 const operationType = /^(\w+?)(Data|Errors|Error|Responses|Response)$/;
 

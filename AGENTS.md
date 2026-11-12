@@ -3,7 +3,8 @@
 - Generated code under `src/generated` is never edited by hand; change the
   generator configuration and run `npm run generate`.
 - `sdk-operations.json` names every method and is identical in
-  `grepvine-ai/grepvine-python-sdk`; change both together.
+  `grepvine-ai/grepvine-python-sdk`; change both together. `null` keeps an
+  operation out of the SDK, as for the sign-in page's own OAuth requests.
 - Before changing anything under `docs/theme`, read `docs/theme/README.md`.
 - Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before changing the client: the
   client and its resources are generated from `sdk-operations.json`,

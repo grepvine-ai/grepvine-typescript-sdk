@@ -10,12 +10,15 @@ async function main() {
   const device = new GrepvineClient({ endpoint });
   const key = await device.deviceLogin.authorize({
     apiKeyName: "TypeScript SDK example",
+    permissions: ["search", "read"],
     onCode: ({ verification_uri_complete, user_code }) => {
       console.log(`Open ${verification_uri_complete}`);
       console.log(`Enter code: ${user_code}`);
     },
   });
-  console.log(`Received API key ${key.prefix}…`);
+  console.log(
+    `Received API key ${key.prefix}… that may ${key.permissions.join(", ")}`,
+  );
 
   const client = new GrepvineClient({ endpoint, apiKey: key.key });
   for await (const org of paginate(client.organizations.list, {})) {

@@ -142,13 +142,21 @@ describe("deviceLogin.authorize", () => {
     const codes: string[] = [];
     const done = client.deviceLogin.authorize({
       apiKeyName: "ci",
+      permissions: ["search", "read"],
+      organization: "acme",
+      indexes: ["logs"],
       onCode: (login) => void codes.push(login.user_code),
     });
     await vi.advanceTimersByTimeAsync(30_000);
     expect(await done).toMatchObject({ key: "gvk_new" });
     expect(codes).toEqual(["ABCD-EFGH"]);
     expect(times).toEqual([5_000, 10_000, 20_000]);
-    expect(await requests[0].json()).toEqual({ api_key_name: "ci" });
+    expect(await requests[0].json()).toEqual({
+      api_key_name: "ci",
+      permissions: ["search", "read"],
+      organization: "acme",
+      indexes: ["logs"],
+    });
     expect(await requests[1].json()).toEqual({ device_code: "dev" });
   });
 
@@ -158,7 +166,11 @@ describe("deviceLogin.authorize", () => {
       sequence(json(authorization), apiError(400, "access_denied")),
     );
     const done = client.deviceLogin
-      .authorize({ apiKeyName: "ci", onCode: () => {} })
+      .authorize({
+        apiKeyName: "ci",
+        permissions: ["search"],
+        onCode: () => {},
+      })
       .catch((e: unknown) => e);
     await vi.advanceTimersByTimeAsync(5_000);
     expect(await done).toBeInstanceOf(InvalidRequestError);
@@ -172,7 +184,12 @@ describe("deviceLogin.authorize", () => {
         : apiError(400, "authorization_pending"),
     );
     const done = client.deviceLogin
-      .authorize({ apiKeyName: "ci", onCode: () => {}, timeout: 12_000 })
+      .authorize({
+        apiKeyName: "ci",
+        permissions: ["search"],
+        onCode: () => {},
+        timeout: 12_000,
+      })
       .catch((e: unknown) => e);
     await vi.advanceTimersByTimeAsync(12_000);
     const error = await done;

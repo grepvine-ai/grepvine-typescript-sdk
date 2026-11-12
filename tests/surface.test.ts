@@ -10,6 +10,7 @@ it("exports the client, its resources, the helpers and the errors", () => {
       "AuthenticationError",
       "ConfigurationError",
       "ConflictError",
+      "Connections",
       "DeviceLogin",
       "Documents",
       "GrepvineClient",
@@ -57,6 +58,7 @@ it("keeps the API's names for models and operation types", () => {
     state: "ready",
     document_count: 0,
     content_bytes: 0,
+    permissions: ["search"],
     created_at: "",
   };
   const data: sdk.ListIndexesData["path"] = {
