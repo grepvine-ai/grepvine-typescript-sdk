@@ -2,6 +2,7 @@ export { GrepvineClient, type GrepvineClientOptions } from "./client.js";
 export {
   Account,
   ApiKeys,
+  Connections,
   Members,
   Organizations,
   Search,

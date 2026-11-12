@@ -15,10 +15,13 @@ import type {
   AddOrganizationMemberResponses,
   ApproveDeviceAuthorizationErrors,
   ApproveDeviceAuthorizationResponses,
+  ApproveOAuthAuthorizationErrors,
+  ApproveOAuthAuthorizationResponses,
   ChangePasswordErrors,
   ChangePasswordResponses,
   CheckInvitationErrors,
   CheckInvitationResponses,
+  ConnectionScope,
   CreateApiKeyErrors,
   CreateApiKeyResponses,
   CreateIndexErrors,
@@ -36,10 +39,14 @@ import type {
   DeleteOrganizationResponses,
   DenyDeviceAuthorizationErrors,
   DenyDeviceAuthorizationResponses,
+  DenyOAuthAuthorizationErrors,
+  DenyOAuthAuthorizationResponses,
   GetAuthOptionsErrors,
   GetAuthOptionsResponses,
   GetCurrentUserErrors,
   GetCurrentUserResponses,
+  GetDeviceAuthorizationErrors,
+  GetDeviceAuthorizationResponses,
   GetDocumentErrors,
   GetDocumentResponses,
   GetIndexErrors,
@@ -50,10 +57,14 @@ import type {
   GetUsernameAvailabilityResponses,
   IndexDescription,
   IndexName,
+  IndexScope,
   IndexTagChanges,
   IndexTags,
+  KeyScope,
   ListApiKeysErrors,
   ListApiKeysResponses,
+  ListConnectionsErrors,
+  ListConnectionsResponses,
   ListDocumentsErrors,
   ListDocumentsResponses,
   ListIndexesErrors,
@@ -66,8 +77,12 @@ import type {
   LoginResponses,
   LogoutErrors,
   LogoutResponses,
+  LookupOAuthAuthorizationErrors,
+  LookupOAuthAuthorizationResponses,
   Metadata,
   Name,
+  OAuthAuthorizationRequest,
+  Permissions,
   PollDeviceTokenErrors,
   PollDeviceTokenResponses,
   PutDocumentErrors,
@@ -82,6 +97,8 @@ import type {
   RemoveOrganizationMemberResponses,
   RevokeApiKeyErrors,
   RevokeApiKeyResponses,
+  RevokeConnectionErrors,
+  RevokeConnectionResponses,
   StartDeviceAuthorizationErrors,
   StartDeviceAuthorizationResponses,
   TransferOrganizationOwnershipErrors,
@@ -451,6 +468,10 @@ export class DeviceLogin extends HeyApiClient {
   public start<ThrowOnError extends boolean = true>(
     parameters: {
       api_key_name: string;
+      organization?: Name;
+      indexes?: IndexScope;
+      permissions: Permissions;
+      expires_at?: string;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<
@@ -461,7 +482,17 @@ export class DeviceLogin extends HeyApiClient {
   > {
     const params = buildClientParams(
       [parameters],
-      [{ args: [{ in: "body", key: "api_key_name" }] }],
+      [
+        {
+          args: [
+            { in: "body", key: "api_key_name" },
+            { in: "body", key: "organization" },
+            { in: "body", key: "indexes" },
+            { in: "body", key: "permissions" },
+            { in: "body", key: "expires_at" },
+          ],
+        },
+      ],
     );
     return (options?.client ?? this.client).post<
       StartDeviceAuthorizationResponses,
@@ -482,13 +513,60 @@ export class DeviceLogin extends HeyApiClient {
   }
 
   /**
+   * Read a pending device authorization
+   *
+   * Returns the scope a pending device authorization asks for. Only a signed-in session can read one.
+   */
+  public get<ThrowOnError extends boolean = true>(
+    parameters: {
+      user_code: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    GetDeviceAuthorizationResponses,
+    GetDeviceAuthorizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "user_code" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      GetDeviceAuthorizationResponses,
+      GetDeviceAuthorizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/device/authorizations/lookup",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
    * Approve device authorization
    *
-   * Approves a pending device authorization for the signed-in account, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. A code that is unknown, already decided or expired is not found.
+   * Approves a pending device authorization, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. Without a scope it grants what the device asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the approving account can. A code that is unknown, already decided or expired is not found. Only a signed-in session can approve.
    */
   public approve<ThrowOnError extends boolean = true>(
     parameters: {
       user_code: string;
+      scope?: KeyScope;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<
@@ -499,7 +577,14 @@ export class DeviceLogin extends HeyApiClient {
   > {
     const params = buildClientParams(
       [parameters],
-      [{ args: [{ in: "body", key: "user_code" }] }],
+      [
+        {
+          args: [
+            { in: "body", key: "user_code" },
+            { in: "body", key: "scope" },
+          ],
+        },
+      ],
     );
     return (options?.client ?? this.client).post<
       ApproveDeviceAuthorizationResponses,
@@ -612,6 +697,248 @@ export class DeviceLogin extends HeyApiClient {
   }
 }
 
+export class Connections extends HeyApiClient {
+  /**
+   * Read an app's sign-in request
+   *
+   * Returns who an app signing in through OAuth is and what it asks to do, for a signed-in session to show before approving it. The permissions are those the request's `scope` names that an app can be granted; without any, `search` and `read`. A request that cannot be approved fails with 400, and its app is not sent back an answer. Only a signed-in session can read one.
+   */
+  public lookupRequest<ThrowOnError extends boolean = true>(
+    parameters: {
+      response_type: string;
+      client_id: string;
+      redirect_uri: string;
+      code_challenge: string;
+      code_challenge_method: string;
+      resource: string;
+      state?: string;
+      scope?: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    LookupOAuthAuthorizationResponses,
+    LookupOAuthAuthorizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "body", key: "response_type" },
+            { in: "body", key: "client_id" },
+            { in: "body", key: "redirect_uri" },
+            { in: "body", key: "code_challenge" },
+            { in: "body", key: "code_challenge_method" },
+            { in: "body", key: "resource" },
+            { in: "body", key: "state" },
+            { in: "body", key: "scope" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      LookupOAuthAuthorizationResponses,
+      LookupOAuthAuthorizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/oauth/authorizations/lookup",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
+   * Approve an app's sign-in request
+   *
+   * Approves an app's sign-in request with the scope the signed-in account chose, creating a connection, and returns the address to send the browser to, which hands the app a single-use code. The connection never does more than the approving account can, and expires after 90 days unless the app keeps using it. `manage_members` and `manage_organization` cannot be granted to an app. A 404 means the organization or an index named does not exist or is not visible. Only a signed-in session can approve.
+   */
+  public approveRequest<ThrowOnError extends boolean = true>(
+    parameters: {
+      request: OAuthAuthorizationRequest;
+      scope: ConnectionScope;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    ApproveOAuthAuthorizationResponses,
+    ApproveOAuthAuthorizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "body", key: "request" },
+            { in: "body", key: "scope" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      ApproveOAuthAuthorizationResponses,
+      ApproveOAuthAuthorizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/oauth/authorizations/approve",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
+   * Deny an app's sign-in request
+   *
+   * Denies an app's sign-in request and returns the address to send the browser to, which tells the app it was refused with `access_denied`. Only a signed-in session can deny.
+   */
+  public denyRequest<ThrowOnError extends boolean = true>(
+    parameters: {
+      request: OAuthAuthorizationRequest;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    DenyOAuthAuthorizationResponses,
+    DenyOAuthAuthorizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "body", key: "request" }] }],
+    );
+    return (options?.client ?? this.client).post<
+      DenyOAuthAuthorizationResponses,
+      DenyOAuthAuthorizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/oauth/authorizations/deny",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
+   * List connections
+   *
+   * Lists the apps you have connected that are still in use: revoked and ended connections are left out. Newest first. Only a signed-in session can list them.
+   */
+  public list<ThrowOnError extends boolean = true>(
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    ListConnectionsResponses,
+    ListConnectionsErrors,
+    ThrowOnError,
+    "data"
+  > {
+    return (options?.client ?? this.client).get<
+      ListConnectionsResponses,
+      ListConnectionsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/connections",
+      ...options,
+    });
+  }
+
+  /**
+   * Revoke a connection
+   *
+   * Revokes one of the authenticated account's connections. The app's requests are refused from then on, and it must sign in again. A connection that doesn't exist, is already revoked or belongs to another account is not found. Only a signed-in session can revoke one.
+   */
+  public revoke<ThrowOnError extends boolean = true>(
+    parameters: {
+      connection_id: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    RevokeConnectionResponses,
+    RevokeConnectionErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "path", key: "connection_id" }] }],
+    );
+    return (options?.client ?? this.client).delete<
+      RevokeConnectionResponses,
+      RevokeConnectionErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        { scheme: "bearer", type: "http" },
+      ],
+      url: "/connections/{connection_id}",
+      ...options,
+      ...params,
+    });
+  }
+}
+
 export class ApiKeys extends HeyApiClient {
   /**
    * List API keys
@@ -665,11 +992,15 @@ export class ApiKeys extends HeyApiClient {
   /**
    * Create an API key
    *
-   * Creates an API key for the authenticated account. The response is the only time the secret key is shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
+   * Creates a key that reaches one organization or all of the account's, a list of indexes or all of them, with a set of permissions, until it expires. A 404 means the organization or an index named does not exist or is not visible. Only a signed-in session can create, list or revoke keys. The response is the only time the secret key is shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
    */
   public create<ThrowOnError extends boolean = true>(
     parameters: {
       name: string;
+      organization?: Name;
+      indexes?: IndexScope;
+      permissions: Permissions;
+      expires_at?: string;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<
@@ -680,7 +1011,17 @@ export class ApiKeys extends HeyApiClient {
   > {
     const params = buildClientParams(
       [parameters],
-      [{ args: [{ in: "body", key: "name" }] }],
+      [
+        {
+          args: [
+            { in: "body", key: "name" },
+            { in: "body", key: "organization" },
+            { in: "body", key: "indexes" },
+            { in: "body", key: "permissions" },
+            { in: "body", key: "expires_at" },
+          ],
+        },
+      ],
     );
     return (options?.client ?? this.client).post<
       CreateApiKeyResponses,
@@ -1924,6 +2265,11 @@ export class GrepvineApi extends HeyApiClient {
   private _deviceLogin?: DeviceLogin;
   get deviceLogin(): DeviceLogin {
     return (this._deviceLogin ??= new DeviceLogin({ client: this.client }));
+  }
+
+  private _connections?: Connections;
+  get connections(): Connections {
+    return (this._connections ??= new Connections({ client: this.client }));
   }
 
   private _apiKeys?: ApiKeys;

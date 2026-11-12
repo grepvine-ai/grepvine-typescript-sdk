@@ -1,4 +1,4 @@
-import type { MutationResult } from "./generated/types.gen.js";
+import type { ErrorDetail, MutationResult } from "./generated/types.gen.js";
 
 /**
  * Base class of every error the SDK throws.
@@ -21,7 +21,9 @@ export class TransportError extends GrepvineError {}
  *
  * `code` says what went wrong in machine-readable form, `message` is the
  * service's sentence about it, and `requestId` identifies the request for
- * support.
+ * support. `details` holds structured information about the error; ignore
+ * types you do not know. A `"missing_permission"` detail names in
+ * `metadata.permission` the permission the API key lacks.
  */
 export class APIError extends GrepvineError {
   /** The HTTP status of the answer. */
@@ -34,6 +36,8 @@ export class APIError extends GrepvineError {
   readonly requestId: string | undefined;
   /** The `Retry-After` interval the service sent, in whole seconds. */
   readonly retryAfter: number | undefined;
+  /** Structured information about the error, such as a missing permission. */
+  readonly details: readonly ErrorDetail[];
 
   constructor(fields: {
     statusCode: number;
@@ -42,6 +46,7 @@ export class APIError extends GrepvineError {
     message: string;
     requestId?: string;
     retryAfter?: number;
+    details?: ErrorDetail[];
   }) {
     super(fields.message);
     this.statusCode = fields.statusCode;
@@ -49,6 +54,7 @@ export class APIError extends GrepvineError {
     this.reason = fields.reason;
     this.requestId = fields.requestId;
     this.retryAfter = fields.retryAfter;
+    this.details = fields.details ?? [];
   }
 
   override toString(): string {
@@ -160,5 +166,8 @@ export function mapError(
       (fields.error ? String(fields.error) : `HTTP ${status}`) + messageSuffix,
     requestId: headers.get("x-request-id") ?? undefined,
     retryAfter: /^\d+$/.test(retryAfter) ? Number(retryAfter) : undefined,
+    details: Array.isArray(fields.details)
+      ? (fields.details as ErrorDetail[])
+      : undefined,
   });
 }

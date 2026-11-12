@@ -10,6 +10,7 @@ import type {
   Metadata,
   MetadataValue,
   MutationResult,
+  Permission,
   PutObjectRecord,
 } from "./generated/types.gen.js";
 import {
@@ -298,7 +299,7 @@ export class Documents extends DocumentOperations {
  *
  * A device calls {@link DeviceLogin.authorize} (or `start` and `poll`) and
  * shows a code; a person approves it with `approve` from a client that holds
- * a session or an API key, and the device receives an API key of its own.
+ * a session, and the device receives an API key of its own.
  *
  * @category Device login
  */
@@ -308,6 +309,11 @@ export class DeviceLogin extends DeviceLoginOperations {
    * at the service's interval, slowing down when asked, until the key is
    * issued.
    *
+   * `permissions`, and optionally `organization`, `indexes` and `expiresAt`
+   * (an ISO 8601 time), are what the key asks for; a field left out sets no
+   * limit. The person approving sees them and may grant a narrower or wider
+   * scope, so check what the returned key reaches.
+   *
    * A denied login throws {@link InvalidRequestError} with code
    * `"access_denied"`. A login that expires, or outlasts `timeout`
    * milliseconds, throws {@link GrepvineError}.
@@ -315,6 +321,7 @@ export class DeviceLogin extends DeviceLoginOperations {
    * ```ts
    * const { key } = await client.deviceLogin.authorize({
    *   apiKeyName: "build agent",
+   *   permissions: ["search", "read"],
    *   onCode: ({ user_code, verification_uri_complete }) =>
    *     console.log(`Open ${verification_uri_complete} and enter ${user_code}`),
    * });
@@ -322,13 +329,23 @@ export class DeviceLogin extends DeviceLoginOperations {
    */
   async authorize(parameters: {
     apiKeyName: string;
+    permissions: Permission[];
+    organization?: string;
+    indexes?: string[];
+    expiresAt?: string;
     onCode: (authorization: DeviceAuthorization) => void | Promise<void>;
     timeout?: number;
     signal?: AbortSignal;
   }): Promise<ApiKeyCreated> {
     const { signal, timeout } = parameters;
     const authorization = await this.start(
-      { api_key_name: parameters.apiKeyName },
+      {
+        api_key_name: parameters.apiKeyName,
+        permissions: parameters.permissions,
+        organization: parameters.organization,
+        indexes: parameters.indexes,
+        expires_at: parameters.expiresAt,
+      },
       { signal },
     );
     await parameters.onCode(authorization);

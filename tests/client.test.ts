@@ -152,6 +152,23 @@ describe("errors", () => {
     );
   });
 
+  it("carries the answer's details", async () => {
+    const detail = {
+      type: "missing_permission",
+      metadata: { permission: "write" },
+    };
+    const { client } = fakeClient(() =>
+      Response.json(
+        { code: "permission_denied", error: "no", details: [detail] },
+        { status: 403 },
+      ),
+    );
+    const error = await client.indexes
+      .get({ organization: "acme", index: "logs" })
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ details: [detail] });
+  });
+
   it("tells an expired page token apart", async () => {
     const { client } = fakeClient(() => apiError(400, "invalid_page"));
     await expect(
