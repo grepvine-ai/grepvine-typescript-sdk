@@ -86,7 +86,8 @@ npm run docs
 
 Generation reads the exported snapshot and needs only Node.js. Never edit the
 snapshot; the Grepvine team changes the contract. Give a new operation its
-place in `sdk-operations.json`, identically in both SDK repositories. The
+place in `sdk-operations.json`, identically in both SDK repositories, or
+`null` to keep it out of the SDK, as for the sign-in page's own requests. The
 client, models and transport are generated with `@hey-api/openapi-ts@0.99.0`
 (types, SDK and Fetch plugins); generation dependencies are development-only.
 

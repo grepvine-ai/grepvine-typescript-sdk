@@ -3,7 +3,9 @@ import { defineConfig } from "@hey-api/openapi-ts";
 
 // Where each operation lives on the client: resource path, then method name.
 // Shared with the Python SDK; tests/coverage.test.ts checks it is complete.
-const operations: Record<string, string[]> = JSON.parse(
+// null keeps an operation out of the SDK, such as the sign-in page's own
+// requests; the models only it uses are left out with it.
+const operations: Record<string, string[] | null> = JSON.parse(
   readFileSync(new URL("./sdk-operations.json", import.meta.url), "utf8"),
 );
 
@@ -15,6 +17,7 @@ type Spec = {
   };
 };
 type Operation = {
+  operationId?: string;
   parameters?: { $ref?: string }[];
   requestBody?: { content: Record<string, { schema: { $ref?: string } }> };
 };
@@ -31,6 +34,13 @@ export default defineConfig({
         // The client sends both headers itself: the CSRF token of a session
         // after `account.login`, and an idempotency key on every write.
         spec.components.parameters.IdempotencyKey.required = false;
+        for (const [path, item] of Object.entries(spec.paths)) {
+          for (const [method, operation] of Object.entries(item)) {
+            if (operations[operation.operationId ?? ""] === null)
+              delete item[method];
+          }
+          if (Object.keys(item).length === 0) delete spec.paths[path];
+        }
         for (const item of Object.values(spec.paths)) {
           for (const operation of Object.values(item)) {
             operation.parameters = operation.parameters?.filter(

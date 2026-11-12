@@ -38,7 +38,7 @@
   "getDeviceAuthorization": ["deviceLogin", "get"],
   "listConnections": ["connections", "list"],
   "revokeConnection": ["connections", "revoke"],
-  "lookupOAuthAuthorization": ["connections", "lookupRequest"],
-  "approveOAuthAuthorization": ["connections", "approveRequest"],
-  "denyOAuthAuthorization": ["connections", "denyRequest"]
+  "lookupOAuthAuthorization": null,
+  "approveOAuthAuthorization": null,
+  "denyOAuthAuthorization": null
 }

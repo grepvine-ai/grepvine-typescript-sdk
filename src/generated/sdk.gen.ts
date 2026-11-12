@@ -15,13 +15,10 @@ import type {
   AddOrganizationMemberResponses,
   ApproveDeviceAuthorizationErrors,
   ApproveDeviceAuthorizationResponses,
-  ApproveOAuthAuthorizationErrors,
-  ApproveOAuthAuthorizationResponses,
   ChangePasswordErrors,
   ChangePasswordResponses,
   CheckInvitationErrors,
   CheckInvitationResponses,
-  ConnectionScope,
   CreateApiKeyErrors,
   CreateApiKeyResponses,
   CreateIndexErrors,
@@ -39,8 +36,6 @@ import type {
   DeleteOrganizationResponses,
   DenyDeviceAuthorizationErrors,
   DenyDeviceAuthorizationResponses,
-  DenyOAuthAuthorizationErrors,
-  DenyOAuthAuthorizationResponses,
   GetAuthOptionsErrors,
   GetAuthOptionsResponses,
   GetCurrentUserErrors,
@@ -77,11 +72,8 @@ import type {
   LoginResponses,
   LogoutErrors,
   LogoutResponses,
-  LookupOAuthAuthorizationErrors,
-  LookupOAuthAuthorizationResponses,
   Metadata,
   Name,
-  OAuthAuthorizationRequest,
   Permissions,
   PollDeviceTokenErrors,
   PollDeviceTokenResponses,
@@ -698,172 +690,6 @@ export class DeviceLogin extends HeyApiClient {
 }
 
 export class Connections extends HeyApiClient {
-  /**
-   * Read an app's sign-in request
-   *
-   * Returns who an app signing in through OAuth is and what it asks to do, for a signed-in session to show before approving it. The permissions are those the request's `scope` names that an app can be granted; without any, `search` and `read`. A request that cannot be approved fails with 400, and its app is not sent back an answer. Only a signed-in session can read one.
-   */
-  public lookupRequest<ThrowOnError extends boolean = true>(
-    parameters: {
-      response_type: string;
-      client_id: string;
-      redirect_uri: string;
-      code_challenge: string;
-      code_challenge_method: string;
-      resource: string;
-      state?: string;
-      scope?: string;
-    },
-    options?: Options<never, ThrowOnError>,
-  ): RequestResult<
-    LookupOAuthAuthorizationResponses,
-    LookupOAuthAuthorizationErrors,
-    ThrowOnError,
-    "data"
-  > {
-    const params = buildClientParams(
-      [parameters],
-      [
-        {
-          args: [
-            { in: "body", key: "response_type" },
-            { in: "body", key: "client_id" },
-            { in: "body", key: "redirect_uri" },
-            { in: "body", key: "code_challenge" },
-            { in: "body", key: "code_challenge_method" },
-            { in: "body", key: "resource" },
-            { in: "body", key: "state" },
-            { in: "body", key: "scope" },
-          ],
-        },
-      ],
-    );
-    return (options?.client ?? this.client).post<
-      LookupOAuthAuthorizationResponses,
-      LookupOAuthAuthorizationErrors,
-      ThrowOnError,
-      "data"
-    >({
-      responseStyle: "data",
-      security: [
-        {
-          in: "cookie",
-          name: "__Host-grepvine-session",
-          type: "apiKey",
-        },
-        { scheme: "bearer", type: "http" },
-      ],
-      url: "/oauth/authorizations/lookup",
-      ...options,
-      ...params,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-        ...params.headers,
-      },
-    });
-  }
-
-  /**
-   * Approve an app's sign-in request
-   *
-   * Approves an app's sign-in request with the scope the signed-in account chose, creating a connection, and returns the address to send the browser to, which hands the app a single-use code. The connection never does more than the approving account can, and expires after 90 days unless the app keeps using it. `manage_members` and `manage_organization` cannot be granted to an app. A 404 means the organization or an index named does not exist or is not visible. Only a signed-in session can approve.
-   */
-  public approveRequest<ThrowOnError extends boolean = true>(
-    parameters: {
-      request: OAuthAuthorizationRequest;
-      scope: ConnectionScope;
-    },
-    options?: Options<never, ThrowOnError>,
-  ): RequestResult<
-    ApproveOAuthAuthorizationResponses,
-    ApproveOAuthAuthorizationErrors,
-    ThrowOnError,
-    "data"
-  > {
-    const params = buildClientParams(
-      [parameters],
-      [
-        {
-          args: [
-            { in: "body", key: "request" },
-            { in: "body", key: "scope" },
-          ],
-        },
-      ],
-    );
-    return (options?.client ?? this.client).post<
-      ApproveOAuthAuthorizationResponses,
-      ApproveOAuthAuthorizationErrors,
-      ThrowOnError,
-      "data"
-    >({
-      responseStyle: "data",
-      security: [
-        {
-          in: "cookie",
-          name: "__Host-grepvine-session",
-          type: "apiKey",
-        },
-        { scheme: "bearer", type: "http" },
-      ],
-      url: "/oauth/authorizations/approve",
-      ...options,
-      ...params,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-        ...params.headers,
-      },
-    });
-  }
-
-  /**
-   * Deny an app's sign-in request
-   *
-   * Denies an app's sign-in request and returns the address to send the browser to, which tells the app it was refused with `access_denied`. Only a signed-in session can deny.
-   */
-  public denyRequest<ThrowOnError extends boolean = true>(
-    parameters: {
-      request: OAuthAuthorizationRequest;
-    },
-    options?: Options<never, ThrowOnError>,
-  ): RequestResult<
-    DenyOAuthAuthorizationResponses,
-    DenyOAuthAuthorizationErrors,
-    ThrowOnError,
-    "data"
-  > {
-    const params = buildClientParams(
-      [parameters],
-      [{ args: [{ in: "body", key: "request" }] }],
-    );
-    return (options?.client ?? this.client).post<
-      DenyOAuthAuthorizationResponses,
-      DenyOAuthAuthorizationErrors,
-      ThrowOnError,
-      "data"
-    >({
-      responseStyle: "data",
-      security: [
-        {
-          in: "cookie",
-          name: "__Host-grepvine-session",
-          type: "apiKey",
-        },
-        { scheme: "bearer", type: "http" },
-      ],
-      url: "/oauth/authorizations/deny",
-      ...options,
-      ...params,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-        ...params.headers,
-      },
-    });
-  }
-
   /**
    * List connections
    *
