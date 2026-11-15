@@ -4,8 +4,8 @@ import {
   Indexes as IndexOperations,
 } from "./generated/sdk.gen.js";
 import type {
-  ApiKeyCreated,
   DeviceAuthorization,
+  DeviceToken,
   Index,
   Metadata,
   MetadataValue,
@@ -309,9 +309,10 @@ export class DeviceLogin extends DeviceLoginOperations {
    * at the service's interval, slowing down when asked, until the key is
    * issued.
    *
-   * `permissions`, and optionally `organization`, `indexes` and `expiresAt`
-   * (an ISO 8601 time), are what the key asks for; a field left out sets no
-   * limit. The person approving sees them and may grant a narrower or wider
+   * `permissions`, and optionally `agent`, `organization`, `indexes` and
+   * `expiresAt` (an ISO 8601 time), are what the key asks for; a field left
+   * out sets no limit. With `agent`, the key acts as that agent of
+   * `organization` for the person who approves it. The person approving sees them and may grant a narrower or wider
    * scope, so check what the returned key reaches.
    *
    * A denied login throws {@link InvalidRequestError} with code
@@ -330,18 +331,20 @@ export class DeviceLogin extends DeviceLoginOperations {
   async authorize(parameters: {
     apiKeyName: string;
     permissions: Permission[];
+    agent?: string;
     organization?: string;
     indexes?: string[];
     expiresAt?: string;
     onCode: (authorization: DeviceAuthorization) => void | Promise<void>;
     timeout?: number;
     signal?: AbortSignal;
-  }): Promise<ApiKeyCreated> {
+  }): Promise<DeviceToken> {
     const { signal, timeout } = parameters;
     const authorization = await this.start(
       {
         api_key_name: parameters.apiKeyName,
         permissions: parameters.permissions,
+        agent: parameters.agent,
         organization: parameters.organization,
         indexes: parameters.indexes,
         expires_at: parameters.expiresAt,

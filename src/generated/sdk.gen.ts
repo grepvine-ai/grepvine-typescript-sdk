@@ -11,20 +11,31 @@ import {
   type TDataShape,
 } from "./client/index.js";
 import type {
+  AddAgentManagerErrors,
+  AddAgentManagerResponses,
   AddOrganizationMemberErrors,
   AddOrganizationMemberResponses,
+  AgentCeiling,
+  AgentDescription,
+  AgentPermissions,
   ApproveDeviceAuthorizationErrors,
   ApproveDeviceAuthorizationResponses,
   ChangePasswordErrors,
   ChangePasswordResponses,
   CheckInvitationErrors,
   CheckInvitationResponses,
+  CreateAgentErrors,
+  CreateAgentResponses,
+  CreateAgentSecretErrors,
+  CreateAgentSecretResponses,
   CreateApiKeyErrors,
   CreateApiKeyResponses,
   CreateIndexErrors,
   CreateIndexResponses,
   CreateOrganizationErrors,
   CreateOrganizationResponses,
+  DeleteAgentErrors,
+  DeleteAgentResponses,
   DeleteDocumentErrors,
   DeleteDocumentResponses,
   DeleteIndexErrors,
@@ -36,6 +47,9 @@ import type {
   DeleteOrganizationResponses,
   DenyDeviceAuthorizationErrors,
   DenyDeviceAuthorizationResponses,
+  DeviceAgentSecret,
+  GetAgentErrors,
+  GetAgentResponses,
   GetAuthOptionsErrors,
   GetAuthOptionsResponses,
   GetCurrentUserErrors,
@@ -56,6 +70,10 @@ import type {
   IndexTagChanges,
   IndexTags,
   KeyScope,
+  ListAgentSecretsErrors,
+  ListAgentSecretsResponses,
+  ListAgentsErrors,
+  ListAgentsResponses,
   ListApiKeysErrors,
   ListApiKeysResponses,
   ListConnectionsErrors,
@@ -85,8 +103,12 @@ import type {
   QueryIndexResponses,
   RegisterUserErrors,
   RegisterUserResponses,
+  RemoveAgentManagerErrors,
+  RemoveAgentManagerResponses,
   RemoveOrganizationMemberErrors,
   RemoveOrganizationMemberResponses,
+  RevokeAgentSecretErrors,
+  RevokeAgentSecretResponses,
   RevokeApiKeyErrors,
   RevokeApiKeyResponses,
   RevokeConnectionErrors,
@@ -95,10 +117,14 @@ import type {
   StartDeviceAuthorizationResponses,
   TransferOrganizationOwnershipErrors,
   TransferOrganizationOwnershipResponses,
+  UpdateAgentErrors,
+  UpdateAgentResponses,
   UpdateIndexErrors,
   UpdateIndexResponses,
+  UpdateOrganizationErrors,
   UpdateOrganizationMemberErrors,
   UpdateOrganizationMemberResponses,
+  UpdateOrganizationResponses,
 } from "./types.gen.js";
 
 export type Options<
@@ -356,7 +382,11 @@ export class Account extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/auth/logout",
       ...options,
@@ -366,7 +396,7 @@ export class Account extends HeyApiClient {
   /**
    * Get the current user
    *
-   * Returns the account the request authenticates as, whether with a session or an API key. A session request also receives its CSRF token in X-Csrf-Token.
+   * Returns the account the request authenticates as, whether with a session or an API key. A session request also receives its CSRF token in X-Csrf-Token. An agent working on its own has no account and is refused with 403.
    */
   public me<ThrowOnError extends boolean = true>(
     options?: Options<never, ThrowOnError>,
@@ -389,7 +419,11 @@ export class Account extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/auth/me",
       ...options,
@@ -437,7 +471,11 @@ export class Account extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/auth/password",
       ...options,
@@ -455,14 +493,16 @@ export class DeviceLogin extends HeyApiClient {
   /**
    * Start device authorization
    *
-   * Starts signing in a device, such as the command-line client, without entering a password on it. Show the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires after `expires_in` seconds.
+   * Starts signing in a device, such as the command-line client, without entering a password on it. Show the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires after `expires_in` seconds. A device may ask for a new secret of an agent instead of an API key, with `agent_secret` and none of the key's fields.
    */
   public start<ThrowOnError extends boolean = true>(
-    parameters: {
-      api_key_name: string;
+    parameters?: {
+      agent_secret?: DeviceAgentSecret;
+      api_key_name?: string;
+      agent?: Name;
       organization?: Name;
       indexes?: IndexScope;
-      permissions: Permissions;
+      permissions?: Permissions;
       expires_at?: string;
     },
     options?: Options<never, ThrowOnError>,
@@ -477,7 +517,9 @@ export class DeviceLogin extends HeyApiClient {
       [
         {
           args: [
+            { in: "body", key: "agent_secret" },
             { in: "body", key: "api_key_name" },
+            { in: "body", key: "agent" },
             { in: "body", key: "organization" },
             { in: "body", key: "indexes" },
             { in: "body", key: "permissions" },
@@ -537,7 +579,11 @@ export class DeviceLogin extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/device/authorizations/lookup",
       ...options,
@@ -553,7 +599,7 @@ export class DeviceLogin extends HeyApiClient {
   /**
    * Approve device authorization
    *
-   * Approves a pending device authorization, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. Without a scope it grants what the device asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the approving account can. A code that is unknown, already decided or expired is not found. Only a signed-in session can approve.
+   * Approves a pending device authorization, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. Without a scope it grants what the device asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the approving account can. A request for an agent secret is approved as asked, without a scope, by a manager of the agent or an account that manages the organization's agents; the device's next poll receives the new secret. A code that is unknown, already decided or expired is not found. Only a signed-in session can approve.
    */
   public approve<ThrowOnError extends boolean = true>(
     parameters: {
@@ -591,7 +637,11 @@ export class DeviceLogin extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/device/authorizations/approve",
       ...options,
@@ -637,7 +687,11 @@ export class DeviceLogin extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/device/authorizations/deny",
       ...options,
@@ -653,7 +707,7 @@ export class DeviceLogin extends HeyApiClient {
   /**
    * Poll for a device API key
    *
-   * Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`, and an unknown, expired or already used code with `expired_token`.
+   * Exchanges an approved device code for an API key, or for the agent secret it asked for, once. Until the user decides, a poll fails with 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`, as does a request for a secret of an agent that already has two, and an unknown, expired or already used code with `expired_token`.
    */
   public poll<ThrowOnError extends boolean = true>(
     parameters: {
@@ -716,7 +770,11 @@ export class Connections extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/connections",
       ...options,
@@ -756,7 +814,11 @@ export class Connections extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/connections/{connection_id}",
       ...options,
@@ -807,7 +869,11 @@ export class ApiKeys extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/api-keys",
       ...options,
@@ -823,6 +889,7 @@ export class ApiKeys extends HeyApiClient {
   public create<ThrowOnError extends boolean = true>(
     parameters: {
       name: string;
+      agent?: Name;
       organization?: Name;
       indexes?: IndexScope;
       permissions: Permissions;
@@ -841,6 +908,7 @@ export class ApiKeys extends HeyApiClient {
         {
           args: [
             { in: "body", key: "name" },
+            { in: "body", key: "agent" },
             { in: "body", key: "organization" },
             { in: "body", key: "indexes" },
             { in: "body", key: "permissions" },
@@ -862,7 +930,11 @@ export class ApiKeys extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/api-keys",
       ...options,
@@ -908,7 +980,11 @@ export class ApiKeys extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/api-keys/{api_key_id}",
       ...options,
@@ -961,7 +1037,11 @@ export class Members extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/members",
       ...options,
@@ -1012,7 +1092,11 @@ export class Members extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/members",
       ...options,
@@ -1066,7 +1150,11 @@ export class Members extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/members/{user}",
       ...options,
@@ -1117,7 +1205,11 @@ export class Members extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/members/{user}",
       ...options,
@@ -1173,7 +1265,16 @@ export class Organizations extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations",
       ...options,
@@ -1214,7 +1315,11 @@ export class Organizations extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations",
       ...options,
@@ -1260,7 +1365,11 @@ export class Organizations extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}",
       ...options,
@@ -1301,11 +1410,78 @@ export class Organizations extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}",
       ...options,
       ...params,
+    });
+  }
+
+  /**
+   * Update an organization
+   *
+   * Changes an organization's settings. Requires the owner or admin role, and only a signed-in session can change them.
+   */
+  public update<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      members_create_agents?: boolean;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    UpdateOrganizationResponses,
+    UpdateOrganizationErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "body", key: "members_create_agents" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).patch<
+      UpdateOrganizationResponses,
+      UpdateOrganizationErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     });
   }
 
@@ -1350,7 +1526,11 @@ export class Organizations extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/owner",
       ...options,
@@ -1366,6 +1546,574 @@ export class Organizations extends HeyApiClient {
   private _members?: Members;
   get members(): Members {
     return (this._members ??= new Members({ client: this.client }));
+  }
+}
+
+export class Managers extends HeyApiClient {
+  /**
+   * Remove an agent manager
+   *
+   * Removes a manager of the agent. Its managers, owners and admins can remove one.
+   */
+  public remove<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+      user: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    RemoveAgentManagerResponses,
+    RemoveAgentManagerErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+            { in: "path", key: "user" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).delete<
+      RemoveAgentManagerResponses,
+      RemoveAgentManagerErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}/managers/{user}",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Add an agent manager
+   *
+   * Makes a member of the organization a manager of the agent. Its managers, owners and admins can add one. A 404 means the account is not an active member; a 409, that their role does not allow everything the agent may do.
+   */
+  public add<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+      user: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    AddAgentManagerResponses,
+    AddAgentManagerErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+            { in: "path", key: "user" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).put<
+      AddAgentManagerResponses,
+      AddAgentManagerErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}/managers/{user}",
+      ...options,
+      ...params,
+    });
+  }
+}
+
+export class Secrets extends HeyApiClient {
+  /**
+   * List agent secrets
+   *
+   * Lists an agent's active secrets, oldest first. The secret itself is never returned again; `prefix` tells secrets apart. Its managers, owners and admins can list them.
+   */
+  public list<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    ListAgentSecretsResponses,
+    ListAgentSecretsErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      ListAgentSecretsResponses,
+      ListAgentSecretsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}/secrets",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Create an agent secret
+   *
+   * Creates a secret the agent signs in with. An agent has at most two, so one can replace the other; a 409 asks you to remove one first. Its managers, owners and admins can create one, and only from a signed-in session. The response is the only time the secret is shown, so store it securely.
+   */
+  public create<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+      expires_at?: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    CreateAgentSecretResponses,
+    CreateAgentSecretErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+            { in: "body", key: "expires_at" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      CreateAgentSecretResponses,
+      CreateAgentSecretErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}/secrets",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
+   * Revoke an agent secret
+   *
+   * Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for it stop working at once. Its managers, owners and admins can revoke one.
+   */
+  public revoke<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+      secret_id: string;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    RevokeAgentSecretResponses,
+    RevokeAgentSecretErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+            { in: "path", key: "secret_id" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).delete<
+      RevokeAgentSecretResponses,
+      RevokeAgentSecretErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}/secrets/{secret_id}",
+      ...options,
+      ...params,
+    });
+  }
+}
+
+export class Agents extends HeyApiClient {
+  /**
+   * List agents
+   *
+   * Lists an organization's agents, ordered by name. Any member can list them; an agent cannot.
+   */
+  public list<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    ListAgentsResponses,
+    ListAgentsErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [{ args: [{ in: "path", key: "organization" }] }],
+    );
+    return (options?.client ?? this.client).get<
+      ListAgentsResponses,
+      ListAgentsErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Create an agent
+   *
+   * Creates an agent, with the creator as its first manager. Owners and admins can create agents, and developers too when the organization allows it. The agent's permissions must be within your own, and within the key's when a key creates it; a key needs `manage_agents`. A 409 means the organization already has an agent of that name, in any case.
+   */
+  public create<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      name: Name;
+      description?: AgentDescription;
+      indexes?: IndexScope;
+      permissions: AgentPermissions;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    CreateAgentResponses,
+    CreateAgentErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "body", key: "name" },
+            { in: "body", key: "description" },
+            { in: "body", key: "indexes" },
+            { in: "body", key: "permissions" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).post<
+      CreateAgentResponses,
+      CreateAgentErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  /**
+   * Delete an agent
+   *
+   * Deletes an agent with its secrets and every credential it has. Requires the owner or admin role. It can't be undone.
+   */
+  public delete<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    DeleteAgentResponses,
+    DeleteAgentErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).delete<
+      DeleteAgentResponses,
+      DeleteAgentErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Get an agent
+   *
+   * Returns one of the organization's agents. Any member can read it; an agent cannot.
+   */
+  public get<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<GetAgentResponses, GetAgentErrors, ThrowOnError, "data"> {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      GetAgentResponses,
+      GetAgentErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}",
+      ...options,
+      ...params,
+    });
+  }
+
+  /**
+   * Update an agent
+   *
+   * Changes an agent's description or permissions, or disables or enables it. Its managers, owners and admins can change it, and only within their own permissions (and the key's, for a key with `manage_agents`); any of them can disable it. New permissions must also be allowed by every manager's role, or the change is refused with 409. Saving the permissions of an agent with no managers makes you one. A disabled agent is refused at once, with every credential it has.
+   */
+  public update<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      agent: Name;
+      description?: AgentDescription;
+      ceiling?: AgentCeiling;
+      disabled?: boolean;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    UpdateAgentResponses,
+    UpdateAgentErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "path", key: "agent" },
+            { in: "body", key: "description" },
+            { in: "body", key: "ceiling" },
+            { in: "body", key: "disabled" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).patch<
+      UpdateAgentResponses,
+      UpdateAgentErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/agents/{agent}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    });
+  }
+
+  private _managers?: Managers;
+  get managers(): Managers {
+    return (this._managers ??= new Managers({ client: this.client }));
+  }
+
+  private _secrets?: Secrets;
+  get secrets(): Secrets {
+    return (this._secrets ??= new Secrets({ client: this.client }));
   }
 }
 
@@ -1415,7 +2163,16 @@ export class Indexes extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes",
       ...options,
@@ -1468,7 +2225,16 @@ export class Indexes extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes",
       ...options,
@@ -1522,7 +2288,16 @@ export class Indexes extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}",
       ...options,
@@ -1566,7 +2341,16 @@ export class Indexes extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}",
       ...options,
@@ -1619,7 +2403,16 @@ export class Indexes extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}",
       ...options,
@@ -1683,7 +2476,16 @@ export class Documents extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}/objects",
       ...options,
@@ -1749,7 +2551,16 @@ export class Documents extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}/objects",
       ...options,
@@ -1809,7 +2620,16 @@ export class Documents extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}/objects/{key}",
       ...options,
@@ -1862,7 +2682,16 @@ export class Documents extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}/objects/{key}",
       ...options,
@@ -1923,7 +2752,16 @@ export class Documents extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}/objects:batch",
       ...options,
@@ -1984,7 +2822,16 @@ export class Documents extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}/objects:delete",
       ...options,
@@ -2060,7 +2907,16 @@ export class Search extends HeyApiClient {
           name: "__Host-grepvine-session",
           type: "apiKey",
         },
-        { scheme: "bearer", type: "http" },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+        {
+          key: "agentToken",
+          scheme: "bearer",
+          type: "http",
+        },
       ],
       url: "/organizations/{organization}/indexes/{index}/query",
       ...options,
@@ -2106,6 +2962,11 @@ export class GrepvineApi extends HeyApiClient {
   private _organizations?: Organizations;
   get organizations(): Organizations {
     return (this._organizations ??= new Organizations({ client: this.client }));
+  }
+
+  private _agents?: Agents;
+  get agents(): Agents {
+    return (this._agents ??= new Agents({ client: this.client }));
   }
 
   private _indexes?: Indexes;

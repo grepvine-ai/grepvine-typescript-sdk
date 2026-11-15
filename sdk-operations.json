@@ -2,6 +2,7 @@
   "listOrganizations": ["organizations", "list"],
   "createOrganization": ["organizations", "create"],
   "getOrganization": ["organizations", "get"],
+  "updateOrganization": ["organizations", "update"],
   "deleteOrganization": ["organizations", "delete"],
   "transferOrganizationOwnership": ["organizations", "transferOwnership"],
   "listOrganizationMembers": ["organizations", "members", "list"],
@@ -40,5 +41,15 @@
   "revokeConnection": ["connections", "revoke"],
   "lookupOAuthAuthorization": null,
   "approveOAuthAuthorization": null,
-  "denyOAuthAuthorization": null
+  "denyOAuthAuthorization": null,
+  "listAgents": ["agents", "list"],
+  "createAgent": ["agents", "create"],
+  "getAgent": ["agents", "get"],
+  "updateAgent": ["agents", "update"],
+  "deleteAgent": ["agents", "delete"],
+  "addAgentManager": ["agents", "managers", "add"],
+  "removeAgentManager": ["agents", "managers", "remove"],
+  "listAgentSecrets": ["agents", "secrets", "list"],
+  "createAgentSecret": ["agents", "secrets", "create"],
+  "revokeAgentSecret": ["agents", "secrets", "revoke"]
 }

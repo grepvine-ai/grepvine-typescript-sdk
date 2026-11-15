@@ -18,25 +18,46 @@ answer with the API's field names, such as `created_at` and `line_number`.
 Types are exported under their API names: models such as `Index` and
 `QueryResult`, and per-operation types such as `ListIndexesData`.
 
-## Authentication
+## Configuration
 
-Pass your API key, and the endpoint when you use a service other than
-`https://api.grepvine.ai`:
+A client finds its settings the way `gv` does, so after `gv login` the SDK
+needs no setup. Each setting comes from the first of:
+
+1. the option passed to `new GrepvineClient(...)`;
+2. its environment variable;
+3. the configuration file: `$GREPVINE_CONFIG`, else `~/.grepvine/config.yaml`
+   when it exists;
+4. its default.
+
+| Option         | Environment variable    | Default                          |
+| -------------- | ----------------------- | -------------------------------- |
+| `apiKey`       | `GREPVINE_API_KEY`      | None.                            |
+| `agentSecret`  | `GREPVINE_AGENT_SECRET` | None; see [Agents](#agents).     |
+| `endpoint`     | `GREPVINE_API_ENDPOINT` | `https://api.grepvine.ai`        |
+| `organization` | `GREPVINE_ORGANIZATION` | None; kept in `client.settings`. |
 
 ```ts
 import { GrepvineClient } from "@grepvine/sdk";
 
-const client = new GrepvineClient({
-  apiKey: "gvk_...",
-  endpoint: "https://grepvine.example.com",
-});
+const client = new GrepvineClient(); // configured like gv
+const ci = new GrepvineClient({ apiKey: process.env.CI_GREPVINE_KEY }); // one setting overridden
+const fromEnv = GrepvineClient.fromEnv(); // environment variables only
+const staging = GrepvineClient.fromConfig("~/.grepvine/staging.yaml"); // one file only
+const isolated = new GrepvineClient({ apiKey: "gvk_...", trustEnv: false }); // options only
 ```
 
-The key is sent as a bearer token. The SDK reads no environment variables or
-configuration files; pass the values from wherever your application keeps
-them. A `GrepvineClient` also takes `timeout` (the time limit of each attempt,
-in milliseconds; default 60,000), `retry` (a `RetryPolicy`) and `fetch`
-(another `fetch` to send requests with).
+The API key and the agent secret are one credential: both come from the first
+of those places that sets either, and a place that sets both is an error.
+`GrepvineClient.fromEnv()` takes its settings only from the four environment
+variables, and `GrepvineClient.fromConfig(path)` only from that file; a
+setting either leaves out takes its default. The configuration file must be
+readable only by its owner (`chmod 600`). Environment variables and files are
+read only in Node.js; in a browser, pass the options.
+
+The API key is sent as a bearer token. A `GrepvineClient` also takes `timeout`
+(the time limit of each attempt, in milliseconds; default 60,000), `retry` (a
+`RetryPolicy`) and `fetch` (another `fetch` to send requests with), and so do
+`fromEnv` and `fromConfig`.
 
 Every method takes a second argument of request options, such as `signal`, an
 `AbortSignal` that cancels the call.
@@ -266,7 +287,7 @@ subclasses with `statusCode`, `code`, `reason`, `message`, `requestId`,
 | Error                      | When                                                                                                                                                                     |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `InvalidRequestError`      | The request was rejected; fix the input. `InvalidPageError` for a bad page token.                                                                                        |
-| `AuthenticationError`      | The API key or session is missing or not valid.                                                                                                                          |
+| `AuthenticationError`      | The API key, agent secret or session is missing or not valid.                                                                                                            |
 | `PermissionDeniedError`    | The caller may not perform the action. When the API key lacks a permission, `details` has `{ type: "missing_permission", metadata: { permission } }`; get a key with it. |
 | `NotFoundError`            | The resource does not exist or is not visible.                                                                                                                           |
 | `ConflictError`            | The request conflicts with the current state, such as creating an index that exists.                                                                                     |
@@ -384,7 +405,7 @@ down when the service asks, until the key is issued:
 const device = new GrepvineClient(); // no API key needed to start a login
 const key = await device.deviceLogin.authorize({
   apiKeyName: "build agent",
-  permissions: ["search", "read"], // and optionally organization, indexes, expiresAt
+  permissions: ["search", "read"], // and optionally agent, organization, indexes, expiresAt
   onCode: ({ verification_uri_complete, user_code }) =>
     console.log(`Open ${verification_uri_complete} and enter ${user_code}`),
   timeout: 5 * 60_000, // optional; by default, until the login expires
@@ -404,6 +425,44 @@ device asks for, and `approve` grants it, or `scope` instead as a whole:
 ```ts
 await approver.deviceLogin.approve({ user_code: "ABCD-EFGH" }); // or deny(...)
 ```
+
+## Agents
+
+A job that runs without a person, such as CI, can work as an agent of an
+organization with an agent secret (`gvs_...`). Create the secret in the
+agent's **Secrets** section in the console, or with `gv agent secret create`;
+it is shown once. Pass it as `agentSecret`, or set `GREPVINE_AGENT_SECRET`,
+instead of an API key:
+
+```ts
+const agent = new GrepvineClient({
+  agentSecret: process.env.CI_AGENT_SECRET,
+});
+for await (const hit of paginate(agent.search.query, {
+  organization: "acme",
+  index: "support",
+  pattern: "TODO",
+})) {
+  console.log(`${hit.key}:${hit.line_number}: ${hit.text}`);
+}
+```
+
+The client exchanges the secret for a short-lived token, exchanges it again
+shortly before the token expires or after the service refuses it, and sends
+only the token with requests. Concurrent requests wait for one exchange. A
+secret that is not valid, revoked or expired, or that belongs to a disabled
+agent, throws `AuthenticationError` with code `"invalid_client"`.
+
+The agent does what its permissions allow, in its own organization only. A
+request it lacks a permission for throws `PermissionDeniedError` with an
+`"agent_missing_permission"` detail naming the permission; ask one of the
+agent's managers to grant it.
+
+`client.agents` lists, creates, changes and deletes agents,
+`client.agents.managers` adds and removes their managers, and
+`client.agents.secrets` lists and revokes their secrets. They take a
+signed-in session, or an API key of one organization with the
+`manage_agents` permission. Creating a secret takes a signed-in session.
 
 ## Limits worth knowing
 

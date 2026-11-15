@@ -24,7 +24,7 @@ const theme = dirname(fileURLToPath(import.meta.url));
 const layers = ["tokens.css", "components.css"];
 
 const categories = [
-  [/\/src\/(client|retry|paginate)\.ts$/, "Client"],
+  [/\/src\/(client|config|retry|paginate)\.ts$/, "Client"],
   [/\/src\/errors\.ts$/, "Errors"],
 ];
 const resources = {
@@ -35,11 +35,14 @@ const resources = {
   apiKeys: "API keys",
   account: "Account",
   deviceLogin: "Device login",
+  agents: "Agents",
 };
 const classes = {
   GrepvineApi: "Client",
   Options: "Client",
   Members: "Organizations",
+  Managers: "Agents",
+  Secrets: "Agents",
   ...Object.fromEntries(
     Object.entries(resources).map(([name, label]) => [
       name[0].toUpperCase() + name.slice(1),

@@ -1,11 +1,15 @@
 export { GrepvineClient, type GrepvineClientOptions } from "./client.js";
+export { Settings } from "./config.js";
 export {
   Account,
+  Agents,
   ApiKeys,
   Connections,
+  Managers,
   Members,
   Organizations,
   Search,
+  Secrets,
   type Options,
 } from "./generated/sdk.gen.js";
 export {
