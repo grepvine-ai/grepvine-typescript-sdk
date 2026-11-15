@@ -17,21 +17,22 @@ repository.
 
 ## Layout
 
-| Path                   | Contents                                                                                  |
-| ---------------------- | ----------------------------------------------------------------------------------------- |
-| `spec/openapi.json`    | The full public API contract exported by Grepvine. Never edit it here.                    |
-| `spec/source.json`     | The source repository, commit, operation list and checksum of the snapshot.               |
-| `sdk-operations.json`  | Where each operation lives on the client. Shared, identical, with the Python SDK.         |
-| `openapi-ts.config.ts` | Generator configuration.                                                                  |
-| `src/generated`        | Generated client, resource classes, models and transport. Never edit it; regenerate it.   |
-| `src/client.ts`        | `GrepvineClient`: endpoint, authentication, the session, idempotency keys, error mapping. |
-| `src/retry.ts`         | `RetryPolicy` and the retrying `fetch`.                                                   |
-| `src/paginate.ts`      | `paginate`.                                                                               |
-| `src/resources.ts`     | `Indexes`, `Documents` and `DeviceLogin`: the generated classes plus their helpers.       |
-| `src/errors.ts`        | The error hierarchy and status mapping.                                                   |
-| `tests`                | Vitest suites against a fake `fetch` (`tests/fake.ts`), and optional live tests.          |
-| `docs`                 | The TypeDoc guide page (`docs/index.md`) and theme (`docs/theme`).                        |
-| `examples`             | Runnable examples.                                                                        |
+| Path                   | Contents                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `spec/openapi.json`    | The full public API contract exported by Grepvine. Never edit it here.                                               |
+| `spec/source.json`     | The source repository, commit, operation list and checksum of the snapshot.                                          |
+| `sdk-operations.json`  | Where each operation lives on the client. Shared, identical, with the Python SDK.                                    |
+| `openapi-ts.config.ts` | Generator configuration.                                                                                             |
+| `src/generated`        | Generated client, resource classes, models and transport. Never edit it; regenerate it.                              |
+| `src/client.ts`        | `GrepvineClient`: endpoint, authentication, the agent secret exchange, the session, idempotency keys, error mapping. |
+| `src/config.ts`        | `Settings`, resolved like `gv`: option, environment variable, configuration file, default.                           |
+| `src/retry.ts`         | `RetryPolicy` and the retrying `fetch`.                                                                              |
+| `src/paginate.ts`      | `paginate`.                                                                                                          |
+| `src/resources.ts`     | `Indexes`, `Documents` and `DeviceLogin`: the generated classes plus their helpers.                                  |
+| `src/errors.ts`        | The error hierarchy and status mapping.                                                                              |
+| `tests`                | Vitest suites against a fake `fetch` (`tests/fake.ts`), and optional live tests.                                     |
+| `docs`                 | The TypeDoc guide page (`docs/index.md`) and theme (`docs/theme`).                                                   |
+| `examples`             | Runnable examples.                                                                                                   |
 
 ## Design rules
 
@@ -42,7 +43,8 @@ repository.
   API's parameters (`paramsStructure: "flat"`) and return the answer's data,
   throwing on an error answer.
 - Hand-written code is limited to what a generator cannot express: the client
-  options, bearer authentication and the login session, retries with stable
+  options and their resolution like `gv`, bearer authentication, the agent
+  secret exchange and the login session, retries with stable
   idempotency keys, typed errors, `paginate`, and three helpers on the
   resources they belong to (`indexes.waitUntilReady`,
   `deviceLogin.authorize`, `documents.putMany`). Anything else a caller needs
@@ -64,8 +66,14 @@ repository.
   never mentions how the SDK is built, and never mentions service internals
   such as storage, caches or background maintenance. Errors say what the
   caller can do.
-- Loading configuration (environment variables, a configuration file) is
-  deferred: the client uses only the options it is given.
+- A client resolves its settings like `gv` and the Python SDK: option, then
+  `GREPVINE_*` environment variable, then the configuration file, then the
+  default, unless created with `trustEnv: false`; `GrepvineClient.fromEnv()`
+  and `GrepvineClient.fromConfig(path)` read one of those sources alone.
+  The API key and the agent secret are one credential, taken together from
+  the first source that sets either. Environment variables and files are read
+  only in Node.js, through `process.getBuiltinModule`, so the package still
+  loads in a browser.
 - `docs/index.md` is the guide page of the documentation site and mirrors
   `README.md`; change both together.
 

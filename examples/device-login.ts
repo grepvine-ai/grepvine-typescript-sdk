@@ -17,7 +17,7 @@ async function main() {
     },
   });
   console.log(
-    `Received API key ${key.prefix}… that may ${key.permissions.join(", ")}`,
+    `Received API key ${key.prefix}… that may ${key.permissions?.join(", ")}`,
   );
 
   const client = new GrepvineClient({ endpoint, apiKey: key.key });

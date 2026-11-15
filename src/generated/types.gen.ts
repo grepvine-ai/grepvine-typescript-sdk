@@ -29,7 +29,8 @@ export type Error = {
 /**
  * One piece of information about an error. `type` names what it is and which `metadata` keys it carries;
  * clients ignore types they do not know. `missing_permission`: the API key lacks the permission
- * `metadata.permission` names.
+ * `metadata.permission` names. `agent_missing_permission`: the agent lacks the permission
+ * `metadata.permission` names; one of its managers can grant it.
  *
  */
 export type ErrorDetail = {
@@ -60,7 +61,7 @@ export type Pagination = {
 };
 
 /**
- * An account or organization name. Accounts and organizations share one namespace. A name keeps the case it was created with, and any spelling that differs only in case refers to it; no other account or organization can take such a spelling.
+ * A name: of an account, an organization or an agent. Accounts and organizations share one namespace; an agent's name is unique within its organization. A name keeps the case it was created with, and any spelling that differs only in case refers to it; nothing else in the same namespace can take such a spelling.
  */
 export type Name = string;
 
@@ -217,19 +218,24 @@ export type ChangePasswordRequest = {
 };
 
 /**
- * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit.
+ * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it and its permissions; a request for an agent secret sends `agent_secret` and none of the other fields.
  */
 export type DeviceAuthorizationRequest = {
+  agent_secret?: DeviceAgentSecret;
   /**
-   * The name to give the API key the device receives, 1 to 128 characters.
+   * The name to give the API key the device receives, 1 to 128 characters. Required for an API key.
    */
-  api_key_name: string;
+  api_key_name?: string;
+  /**
+   * The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+   */
+  agent?: Name;
   /**
    * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
    */
   organization?: Name;
   indexes?: IndexScope;
-  permissions: Permissions;
+  permissions?: Permissions;
   /**
    * When the key stops working, at most one year ahead. Omitted for a key that never expires.
    */
@@ -237,23 +243,87 @@ export type DeviceAuthorizationRequest = {
 };
 
 /**
- * What a pending device authorization asks for.
+ * What a pending device authorization asks for. A request for an agent secret has `agent_secret` and none of the key's fields.
  */
 export type PendingDeviceAuthorization = {
+  agent_secret?: DeviceAgentSecret;
   /**
    * The name the key the device receives will have.
    */
-  api_key_name: string;
+  api_key_name?: string;
+  /**
+   * The agent the key acts as. Omitted for a key that acts as the account.
+   */
+  agent?: Name;
   /**
    * The one organization the device asks for. Omitted when it asks for every organization of the account.
    */
   organization?: Name;
   indexes?: IndexScope;
-  permissions: Permissions;
+  permissions?: Permissions;
   /**
    * When the key the device receives stops working. Omitted when it never expires.
    */
   expires_at?: string;
+};
+
+/**
+ * A new secret of an agent, which a device asks for instead of an API key.
+ */
+export type DeviceAgentSecret = {
+  /**
+   * The agent's organization.
+   */
+  organization: Name;
+  agent: Name;
+  /**
+   * When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+   */
+  expires_at?: string;
+};
+
+/**
+ * What an approved device receives, once: an API key, with `key` and the key's fields, or a new agent secret in `agent_secret`. Exactly one of `key` and `agent_secret` is set.
+ */
+export type DeviceToken = {
+  /**
+   * The key's unique ID.
+   */
+  id?: string;
+  /**
+   * The name the key was given.
+   */
+  name?: string;
+  /**
+   * The first characters of the key, shown to tell keys apart.
+   */
+  prefix?: string;
+  /**
+   * The agent the key acts as. Omitted when it acts as the account.
+   */
+  agent?: Name;
+  /**
+   * The one organization the key reaches. Omitted when it reaches every organization of the account.
+   */
+  organization?: Name;
+  indexes?: IndexScope;
+  /**
+   * What the key may do.
+   */
+  permissions?: Array<Permission>;
+  /**
+   * When the key was created.
+   */
+  created_at?: string;
+  /**
+   * When the key stops working. Omitted when it never expires.
+   */
+  expires_at?: string;
+  /**
+   * The secret API key. It is shown only in this response; send it as `Authorization: Bearer <key>`.
+   */
+  key?: string;
+  agent_secret?: AgentSecretCreated;
 };
 
 /**
@@ -274,6 +344,10 @@ export type DeviceApprovalRequest = {
  * What a key reaches and may do. A field left out sets no limit.
  */
 export type KeyScope = {
+  /**
+   * The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+   */
+  agent?: Name;
   /**
    * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
    */
@@ -352,6 +426,10 @@ export type PendingOAuthAuthorization = {
  */
 export type ConnectionScope = {
   /**
+   * The agent of the connection's organization the app acts as. Omitted for an app that acts as the account.
+   */
+  agent?: Name;
+  /**
    * The one organization the connection reaches. Omitted for every organization of the account. A list of indexes needs one.
    */
   organization?: Name;
@@ -397,6 +475,10 @@ export type Connection = {
    * The host that serves the app's client metadata document.
    */
   client_host: string;
+  /**
+   * The agent the app acts as. Omitted when it acts as the account.
+   */
+  agent?: Name;
   /**
    * The one organization the connection reaches. Omitted for every organization of the account.
    */
@@ -476,7 +558,8 @@ export type DeviceTokenRequest = {
  * `search` searches an index; `read` reads and lists its documents; `write` stores and deletes documents;
  * `create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.
  * `manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the
- * organization. Both need a key scoped to one organization.
+ * organization; `manage_agents` creates, changes and deletes agents and their managers, and revokes their
+ * secrets, but never creates a secret. These three are opt-in and need a key scoped to one organization.
  *
  */
 export type Permission =
@@ -486,7 +569,8 @@ export type Permission =
   | "create_index"
   | "manage_index"
   | "manage_members"
-  | "manage_organization";
+  | "manage_organization"
+  | "manage_agents";
 
 /**
  * The permissions a key carries, each named once.
@@ -506,6 +590,10 @@ export type CreateApiKeyRequest = {
    * A name to tell the key apart, 1 to 128 characters.
    */
   name: string;
+  /**
+   * The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+   */
+  agent?: Name;
   /**
    * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
    */
@@ -534,6 +622,10 @@ export type ApiKey = {
    * The first characters of the key, shown to tell keys apart.
    */
   prefix: string;
+  /**
+   * The agent the key acts as. Omitted when it acts as the account.
+   */
+  agent?: Name;
   /**
    * The one organization the key reaches. Omitted when it reaches every organization of the account.
    */
@@ -598,13 +690,17 @@ export type Organization = {
    */
   name: Name;
   /**
-   * The authenticated account's role in the organization.
+   * The authenticated account's role in the organization. Left out for an agent working on its own, which is not a member.
    */
-  role: Role;
+  role?: Role;
   /**
    * A suspended organization keeps its data, but refuses every operation on its members, indexes, documents and searches until it is resumed. Contact support.
    */
   suspended: boolean;
+  /**
+   * Whether developers can create agents, as owners and admins always can.
+   */
+  members_create_agents: boolean;
   /**
    * When the organization was created.
    */
@@ -633,6 +729,149 @@ export type CreateOrganizationRequest = {
    * The organization's name. Accounts and organizations share one namespace.
    */
   name: Name;
+};
+
+/**
+ * The settings to change. A field left out is kept.
+ */
+export type UpdateOrganizationRequest = {
+  /**
+   * Whether developers can create agents.
+   */
+  members_create_agents?: boolean;
+};
+
+/**
+ * What the agent is for, at most 1,024 characters.
+ */
+export type AgentDescription = string;
+
+/**
+ * An agent of an organization: what it reaches and may do, and who manages it.
+ */
+export type Agent = {
+  id: string;
+  name: Name;
+  description: AgentDescription;
+  indexes?: IndexScope;
+  permissions: AgentPermissions;
+  /**
+   * The accounts that manage the agent, by name.
+   */
+  managers: Array<Name>;
+  /**
+   * The account that created the agent. Omitted once that account is gone.
+   */
+  created_by?: Name;
+  created_at: string;
+  /**
+   * When the agent last authenticated a request. Omitted if it never has.
+   */
+  last_used_at?: string;
+  /**
+   * Whether the agent is disabled: every request it makes is refused.
+   */
+  disabled: boolean;
+  /**
+   * Whether the agent's permissions should be reviewed, because a manager left or lost a role.
+   */
+  needs_review: boolean;
+};
+
+/**
+ * What an agent may do, each named once: `search`, `read`, `write`, `create_index` and `manage_index`, as for a key. `create_index` needs every index.
+ */
+export type AgentPermissions = Array<Permission>;
+
+/**
+ * An organization's agents.
+ */
+export type AgentPage = {
+  agents: Array<Agent>;
+};
+
+/**
+ * A new agent. Leave indexes out for every index of the organization, including indexes created later.
+ */
+export type CreateAgentRequest = {
+  name: Name;
+  description?: AgentDescription;
+  indexes?: IndexScope;
+  permissions: AgentPermissions;
+};
+
+/**
+ * What an agent reaches and may do, as a whole. Leave indexes out for every index.
+ */
+export type AgentCeiling = {
+  indexes?: IndexScope;
+  permissions: AgentPermissions;
+};
+
+/**
+ * The changes to make to an agent. A field left out is kept.
+ */
+export type UpdateAgentRequest = {
+  description?: AgentDescription;
+  /**
+   * What the agent reaches and may do, replacing it as a whole.
+   */
+  ceiling?: AgentCeiling;
+  /**
+   * Disables or enables the agent.
+   */
+  disabled?: boolean;
+};
+
+/**
+ * A secret an agent signs in with, without the secret itself.
+ */
+export type AgentSecret = {
+  id: string;
+  /**
+   * The first characters of the secret, shown to tell secrets apart.
+   */
+  prefix: string;
+  /**
+   * The account that created the secret. Omitted once that account is gone.
+   */
+  created_by?: Name;
+  created_at: string;
+  /**
+   * When the secret stops working. Omitted when it never expires.
+   */
+  expires_at?: string;
+  /**
+   * When the agent last signed in with it. Omitted if it never has.
+   */
+  last_used_at?: string;
+};
+
+/**
+ * An agent's active secrets.
+ */
+export type AgentSecretPage = {
+  secrets: Array<AgentSecret>;
+};
+
+/**
+ * A new agent secret.
+ */
+export type CreateAgentSecretRequest = {
+  /**
+   * When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+   */
+  expires_at?: string;
+};
+
+/**
+ * A new agent secret, which is shown only this once.
+ */
+export type AgentSecretCreated = AgentSecret & {
+  /**
+   * The secret. It is shown only in this response.
+   */
+  secret: string;
 };
 
 /**
@@ -1297,6 +1536,16 @@ export type Range = string;
 export type User2 = Name;
 
 /**
+ * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+ */
+export type Agent2 = Name;
+
+/**
+ * The ID of the secret, as the listing returns it.
+ */
+export type SecretId = string;
+
+/**
  * The ID of the API key, as the listing returns it.
  */
 export type ApiKeyId = string;
@@ -1620,19 +1869,24 @@ export type ChangePasswordResponse =
 
 export type StartDeviceAuthorizationData = {
   /**
-   * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit.
+   * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it and its permissions; a request for an agent secret sends `agent_secret` and none of the other fields.
    */
   body: {
+    agent_secret?: DeviceAgentSecret;
     /**
-     * The name to give the API key the device receives, 1 to 128 characters.
+     * The name to give the API key the device receives, 1 to 128 characters. Required for an API key.
      */
-    api_key_name: string;
+    api_key_name?: string;
+    /**
+     * The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+     */
+    agent?: Name;
     /**
      * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
      */
     organization?: Name;
     indexes?: IndexScope;
-    permissions: Permissions;
+    permissions?: Permissions;
     /**
      * When the key stops working, at most one year ahead. Omitted for a key that never expires.
      */
@@ -1819,9 +2073,9 @@ export type PollDeviceTokenError =
 
 export type PollDeviceTokenResponses = {
   /**
-   * The device API key. The key is shown once.
+   * The device API key or agent secret, shown once.
    */
-  200: ApiKeyCreated;
+  200: DeviceToken;
 };
 
 export type PollDeviceTokenResponse =
@@ -1942,6 +2196,10 @@ export type CreateApiKeyData = {
      * A name to tell the key apart, 1 to 128 characters.
      */
     name: string;
+    /**
+     * The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+     */
+    agent?: Name;
     /**
      * The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.
      */
@@ -2156,6 +2414,54 @@ export type GetOrganizationResponses = {
 export type GetOrganizationResponse =
   GetOrganizationResponses[keyof GetOrganizationResponses];
 
+export type UpdateOrganizationData = {
+  /**
+   * The settings to change. A field left out is kept.
+   */
+  body: {
+    /**
+     * Whether developers can create agents.
+     */
+    members_create_agents?: boolean;
+  };
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}";
+};
+
+export type UpdateOrganizationErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type UpdateOrganizationError =
+  UpdateOrganizationErrors[keyof UpdateOrganizationErrors];
+
+export type UpdateOrganizationResponses = {
+  /**
+   * The organization as changed.
+   */
+  200: Organization;
+};
+
+export type UpdateOrganizationResponse =
+  UpdateOrganizationResponses[keyof UpdateOrganizationResponses];
+
 export type ListOrganizationMembersData = {
   body?: never;
   path: {
@@ -2360,6 +2666,488 @@ export type TransferOrganizationOwnershipResponses = {
 
 export type TransferOrganizationOwnershipResponse =
   TransferOrganizationOwnershipResponses[keyof TransferOrganizationOwnershipResponses];
+
+export type ListAgentsData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents";
+};
+
+export type ListAgentsErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type ListAgentsError = ListAgentsErrors[keyof ListAgentsErrors];
+
+export type ListAgentsResponses = {
+  /**
+   * The agents.
+   */
+  200: AgentPage;
+};
+
+export type ListAgentsResponse = ListAgentsResponses[keyof ListAgentsResponses];
+
+export type CreateAgentData = {
+  /**
+   * A new agent. Leave indexes out for every index of the organization, including indexes created later.
+   */
+  body: {
+    name: Name;
+    description?: AgentDescription;
+    indexes?: IndexScope;
+    permissions: AgentPermissions;
+  };
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents";
+};
+
+export type CreateAgentErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request conflicts with current state.
+   */
+  409: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type CreateAgentError = CreateAgentErrors[keyof CreateAgentErrors];
+
+export type CreateAgentResponses = {
+  /**
+   * The agent was created.
+   */
+  201: Agent;
+};
+
+export type CreateAgentResponse =
+  CreateAgentResponses[keyof CreateAgentResponses];
+
+export type DeleteAgentData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}";
+};
+
+export type DeleteAgentErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type DeleteAgentError = DeleteAgentErrors[keyof DeleteAgentErrors];
+
+export type DeleteAgentResponses = {
+  /**
+   * The agent was deleted.
+   */
+  204: void;
+};
+
+export type DeleteAgentResponse =
+  DeleteAgentResponses[keyof DeleteAgentResponses];
+
+export type GetAgentData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}";
+};
+
+export type GetAgentErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type GetAgentError = GetAgentErrors[keyof GetAgentErrors];
+
+export type GetAgentResponses = {
+  /**
+   * The agent.
+   */
+  200: Agent;
+};
+
+export type GetAgentResponse = GetAgentResponses[keyof GetAgentResponses];
+
+export type UpdateAgentData = {
+  /**
+   * The changes to make to an agent. A field left out is kept.
+   */
+  body: {
+    description?: AgentDescription;
+    /**
+     * What the agent reaches and may do, replacing it as a whole.
+     */
+    ceiling?: AgentCeiling;
+    /**
+     * Disables or enables the agent.
+     */
+    disabled?: boolean;
+  };
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}";
+};
+
+export type UpdateAgentErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request conflicts with current state.
+   */
+  409: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type UpdateAgentError = UpdateAgentErrors[keyof UpdateAgentErrors];
+
+export type UpdateAgentResponses = {
+  /**
+   * The agent as changed.
+   */
+  200: Agent;
+};
+
+export type UpdateAgentResponse =
+  UpdateAgentResponses[keyof UpdateAgentResponses];
+
+export type RemoveAgentManagerData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+    /**
+     * The member's account name. Any spelling that differs only in case refers to the same account.
+     */
+    user: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}/managers/{user}";
+};
+
+export type RemoveAgentManagerErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type RemoveAgentManagerError =
+  RemoveAgentManagerErrors[keyof RemoveAgentManagerErrors];
+
+export type RemoveAgentManagerResponses = {
+  /**
+   * The agent with its managers.
+   */
+  200: Agent;
+};
+
+export type RemoveAgentManagerResponse =
+  RemoveAgentManagerResponses[keyof RemoveAgentManagerResponses];
+
+export type AddAgentManagerData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+    /**
+     * The member's account name. Any spelling that differs only in case refers to the same account.
+     */
+    user: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}/managers/{user}";
+};
+
+export type AddAgentManagerErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request conflicts with current state.
+   */
+  409: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type AddAgentManagerError =
+  AddAgentManagerErrors[keyof AddAgentManagerErrors];
+
+export type AddAgentManagerResponses = {
+  /**
+   * The agent with its managers.
+   */
+  200: Agent;
+};
+
+export type AddAgentManagerResponse =
+  AddAgentManagerResponses[keyof AddAgentManagerResponses];
+
+export type ListAgentSecretsData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}/secrets";
+};
+
+export type ListAgentSecretsErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type ListAgentSecretsError =
+  ListAgentSecretsErrors[keyof ListAgentSecretsErrors];
+
+export type ListAgentSecretsResponses = {
+  /**
+   * The secrets.
+   */
+  200: AgentSecretPage;
+};
+
+export type ListAgentSecretsResponse =
+  ListAgentSecretsResponses[keyof ListAgentSecretsResponses];
+
+export type CreateAgentSecretData = {
+  /**
+   * A new agent secret.
+   */
+  body: {
+    /**
+     * When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+     */
+    expires_at?: string;
+  };
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}/secrets";
+};
+
+export type CreateAgentSecretErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request conflicts with current state.
+   */
+  409: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type CreateAgentSecretError =
+  CreateAgentSecretErrors[keyof CreateAgentSecretErrors];
+
+export type CreateAgentSecretResponses = {
+  /**
+   * The new secret. It is shown once.
+   */
+  201: AgentSecretCreated;
+};
+
+export type CreateAgentSecretResponse =
+  CreateAgentSecretResponses[keyof CreateAgentSecretResponses];
+
+export type RevokeAgentSecretData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+    /**
+     * The agent's name within the organization. Any spelling that differs only in case refers to the same agent.
+     */
+    agent: Name;
+    /**
+     * The ID of the secret, as the listing returns it.
+     */
+    secret_id: string;
+  };
+  query?: never;
+  url: "/organizations/{organization}/agents/{agent}/secrets/{secret_id}";
+};
+
+export type RevokeAgentSecretErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type RevokeAgentSecretError =
+  RevokeAgentSecretErrors[keyof RevokeAgentSecretErrors];
+
+export type RevokeAgentSecretResponses = {
+  /**
+   * The secret was revoked.
+   */
+  204: void;
+};
+
+export type RevokeAgentSecretResponse =
+  RevokeAgentSecretResponses[keyof RevokeAgentSecretResponses];
 
 export type ListIndexesData = {
   body?: never;

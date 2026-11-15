@@ -6,6 +6,7 @@ it("exports the client, its resources, the helpers and the errors", () => {
     [
       "APIError",
       "Account",
+      "Agents",
       "ApiKeys",
       "AuthenticationError",
       "ConfigurationError",
@@ -18,6 +19,7 @@ it("exports the client, its resources, the helpers and the errors", () => {
       "Indexes",
       "InvalidPageError",
       "InvalidRequestError",
+      "Managers",
       "Members",
       "NotFoundError",
       "Organizations",
@@ -29,6 +31,8 @@ it("exports the client, its resources, the helpers and the errors", () => {
       "RateLimitedError",
       "RetryPolicy",
       "Search",
+      "Secrets",
+      "Settings",
       "ServerError",
       "TransportError",
       "paginate",
@@ -44,6 +48,8 @@ it("puts the helpers on the resources they belong to", () => {
   expect(client.documents.putMany).toBeTypeOf("function");
   expect(client.deviceLogin.authorize).toBeTypeOf("function");
   expect(client.organizations.members).toBeInstanceOf(sdk.Members);
+  expect(client.agents.managers).toBeInstanceOf(sdk.Managers);
+  expect(client.agents.secrets).toBeInstanceOf(sdk.Secrets);
   expect(client.indexes).toBe(client.indexes);
 });
 

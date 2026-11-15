@@ -15,6 +15,7 @@
     "src/**/*.ts",
     "tests/**/*.ts",
     "openapi-ts.config.ts",
+    "vitest.config.ts",
     "examples/**/*.ts"
   ]
 }

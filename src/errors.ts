@@ -23,7 +23,9 @@ export class TransportError extends GrepvineError {}
  * service's sentence about it, and `requestId` identifies the request for
  * support. `details` holds structured information about the error; ignore
  * types you do not know. A `"missing_permission"` detail names in
- * `metadata.permission` the permission the API key lacks.
+ * `metadata.permission` the permission the API key lacks; an
+ * `"agent_missing_permission"` detail names one the agent lacks, which one of
+ * the agent's managers can grant.
  */
 export class APIError extends GrepvineError {
   /** The HTTP status of the answer. */
@@ -151,8 +153,12 @@ export function mapError(
   body: unknown,
   messageSuffix = "",
 ): APIError {
-  const fields =
+  let fields =
     body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  if ("error_description" in fields) {
+    // The token endpoint answers as OAuth does.
+    fields = { code: fields.error, error: fields.error_description };
+  }
   const code = fields.code ? String(fields.code) : "request_failed";
   const retryAfter = (headers.get("retry-after") ?? "").trim();
   let ErrorClass = BY_STATUS[status] ?? APIError;
