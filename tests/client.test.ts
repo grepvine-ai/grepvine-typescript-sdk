@@ -293,3 +293,17 @@ describe("retries", () => {
 function apiErrorEvery(status: number, headers: Record<string, string>) {
   return () => apiError(status, "rate_limited", headers);
 }
+
+it("sends an empty JSON body when every body field is left out", async () => {
+  const { client, requests } = fakeClient(async () => json({}));
+  await client.agents.secrets.create({ organization: "acme", agent: "bot" });
+  await client.indexes.update({ organization: "acme", index: "docs" });
+  await client.account.logout();
+  const [create, update, logout] = requests;
+  expect(create.headers.get("Content-Type")).toBe("application/json");
+  expect(await create.text()).toBe("{}");
+  expect(await update.text()).toBe("{}");
+  // An operation that takes no body still sends none.
+  expect(logout.headers.get("Content-Type")).toBeNull();
+  expect(await logout.text()).toBe("");
+});

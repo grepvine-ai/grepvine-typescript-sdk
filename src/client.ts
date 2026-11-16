@@ -211,6 +211,20 @@ export class GrepvineClient extends GrepvineApi {
         typeof body === "string" ? body : JSON.stringify(body),
     });
 
+    // An operation that takes a JSON body needs one even when every field is
+    // left out; without a field set, the request would otherwise go bodiless.
+    for (const method of ["post", "patch"] as const) {
+      const call = client[method];
+      client[method] = ((opts: Parameters<typeof call>[0]) =>
+        call(
+          opts.body === undefined &&
+            new Headers(opts.headers as HeadersInit).get("Content-Type") ===
+              "application/json"
+            ? { ...opts, body: {} }
+            : opts,
+        )) as typeof call;
+    }
+
     client.interceptors.request.use((request, opts) => {
       if (session.cookies.length) {
         request.headers.set("Cookie", session.cookies.join("; "));
