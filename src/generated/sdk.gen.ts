@@ -511,7 +511,7 @@ export class DeviceLogin extends HeyApiClient {
       organization?: Name;
       indexes?: IndexScope;
       permissions?: Permissions;
-      expires_at?: string;
+      expires_at?: string | null;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<
@@ -915,7 +915,7 @@ export class ApiKeys extends HeyApiClient {
       organization?: Name;
       indexes?: IndexScope;
       permissions: Permissions;
-      expires_at?: string;
+      expires_at: string | null;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<
@@ -1774,7 +1774,7 @@ export class Secrets extends HeyApiClient {
     parameters: {
       organization: Name;
       agent: Name;
-      expires_at?: string;
+      expires_at: string | null;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<

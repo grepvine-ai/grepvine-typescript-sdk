@@ -218,7 +218,7 @@ export type ChangePasswordRequest = {
 };
 
 /**
- * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it and its permissions; a request for an agent secret sends `agent_secret` and none of the other fields.
+ * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it, its permissions and its expiry (`expires_at`, null for never); a request for an agent secret sends `agent_secret` and none of the other fields.
  */
 export type DeviceAuthorizationRequest = {
   agent_secret?: DeviceAgentSecret;
@@ -237,9 +237,9 @@ export type DeviceAuthorizationRequest = {
   indexes?: IndexScope;
   permissions?: Permissions;
   /**
-   * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+   * When the key stops working, at most one year ahead, or null for a key that never expires.
    */
-  expires_at?: string;
+  expires_at?: string | null;
 };
 
 /**
@@ -277,9 +277,9 @@ export type DeviceAgentSecret = {
   organization: Name;
   agent: Name;
   /**
-   * When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+   * When the secret stops working, at most one year ahead, or null for a secret that never expires.
    */
-  expires_at?: string;
+  expires_at: string | null;
 };
 
 /**
@@ -341,7 +341,7 @@ export type DeviceApprovalRequest = {
 };
 
 /**
- * What a key reaches and may do. A field left out sets no limit.
+ * What a key reaches and may do. A field left out sets no limit; the expiry is always given.
  */
 export type KeyScope = {
   /**
@@ -355,9 +355,9 @@ export type KeyScope = {
   indexes?: IndexScope;
   permissions: Permissions;
   /**
-   * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+   * When the key stops working, at most one year ahead, or null for a key that never expires.
    */
-  expires_at?: string;
+  expires_at: string | null;
 };
 
 /**
@@ -583,7 +583,7 @@ export type Permissions = Array<Permission>;
 export type IndexScope = Array<IndexName>;
 
 /**
- * Creates an API key. A scope field left out sets no limit.
+ * Creates an API key. A scope field left out sets no limit; the expiry is always given.
  */
 export type CreateApiKeyRequest = {
   /**
@@ -601,9 +601,9 @@ export type CreateApiKeyRequest = {
   indexes?: IndexScope;
   permissions: Permissions;
   /**
-   * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+   * When the key stops working, at most one year ahead, or null for a key that never expires.
    */
-  expires_at?: string;
+  expires_at: string | null;
 };
 
 /**
@@ -866,9 +866,9 @@ export type AgentSecretPage = {
  */
 export type CreateAgentSecretRequest = {
   /**
-   * When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+   * When the secret stops working, at most one year ahead, or null for a secret that never expires.
    */
-  expires_at?: string;
+  expires_at: string | null;
 };
 
 /**
@@ -879,6 +879,10 @@ export type AgentSecretCreated = AgentSecret & {
    * The secret. It is shown only in this response.
    */
   secret: string;
+  /**
+   * The agent's `id`, for OAuth clients that ask for a client ID beside the secret when they exchange it for a token.
+   */
+  client_id: string;
 };
 
 /**
@@ -1876,7 +1880,7 @@ export type ChangePasswordResponse =
 
 export type StartDeviceAuthorizationData = {
   /**
-   * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it and its permissions; a request for an agent secret sends `agent_secret` and none of the other fields.
+   * Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it, its permissions and its expiry (`expires_at`, null for never); a request for an agent secret sends `agent_secret` and none of the other fields.
    */
   body: {
     agent_secret?: DeviceAgentSecret;
@@ -1895,9 +1899,9 @@ export type StartDeviceAuthorizationData = {
     indexes?: IndexScope;
     permissions?: Permissions;
     /**
-     * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+     * When the key stops working, at most one year ahead, or null for a key that never expires.
      */
-    expires_at?: string;
+    expires_at?: string | null;
   };
   path?: never;
   query?: never;
@@ -2196,7 +2200,7 @@ export type ListApiKeysResponse =
 
 export type CreateApiKeyData = {
   /**
-   * Creates an API key. A scope field left out sets no limit.
+   * Creates an API key. A scope field left out sets no limit; the expiry is always given.
    */
   body: {
     /**
@@ -2214,9 +2218,9 @@ export type CreateApiKeyData = {
     indexes?: IndexScope;
     permissions: Permissions;
     /**
-     * When the key stops working, at most one year ahead. Omitted for a key that never expires.
+     * When the key stops working, at most one year ahead, or null for a key that never expires.
      */
-    expires_at?: string;
+    expires_at: string | null;
   };
   path?: never;
   query?: never;
@@ -3067,9 +3071,9 @@ export type CreateAgentSecretData = {
    */
   body: {
     /**
-     * When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+     * When the secret stops working, at most one year ahead, or null for a secret that never expires.
      */
-    expires_at?: string;
+    expires_at: string | null;
   };
   path: {
     /**

@@ -156,6 +156,8 @@ describe("deviceLogin.authorize", () => {
       permissions: ["search", "read"],
       organization: "acme",
       indexes: ["logs"],
+      // No expiresAt: a key that never expires.
+      expires_at: null,
     });
     expect(await requests[1].json()).toEqual({ device_code: "dev" });
   });

@@ -337,7 +337,8 @@ const index = await client.indexes.get(
 Only a session (see [Account](#account)) can create, list or revoke API keys,
 not an API key. A key reaches one organization or every one of the
 account's, a list of indexes or all of them, with a set of permissions, until
-it expires. A field left out sets no limit, and a key never does more than
+it expires. A scope field left out sets no limit; `expires_at` is always
+given, `null` for a key that never expires. A key never does more than
 its account's role allows. The permissions are `search`, `read`, `write`,
 `create_index` (needs every index in scope), `manage_index`, and
 `manage_members` and `manage_organization` (both need one organization).
@@ -395,6 +396,7 @@ await client.account.login({ identifier: "alice", password });
 const key = await client.apiKeys.create({
   name: "laptop",
   permissions: ["search", "read"],
+  expires_at: null, // never expires
 });
 await client.account.logout();
 ```

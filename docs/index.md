@@ -333,7 +333,11 @@ const index = await client.indexes.get(
 ## API keys
 
 ```ts
-const created = await client.apiKeys.create({ name: "ci" });
+const created = await client.apiKeys.create({
+  name: "ci",
+  permissions: ["search", "read"],
+  expires_at: new Date(Date.now() + 90 * 86_400_000).toISOString(), // or null: never
+});
 console.log(created.key); // shown only this once
 
 for await (const key of client.apiKeys.list()) {
@@ -373,7 +377,11 @@ the service must allow the page's origin.
 ```ts
 const client = new GrepvineClient({ endpoint: "https://grepvine.example.com" });
 await client.account.login({ identifier: "alice", password });
-const key = await client.apiKeys.create({ name: "laptop" });
+const key = await client.apiKeys.create({
+  name: "laptop",
+  permissions: ["search", "read"],
+  expires_at: null,
+});
 await client.account.logout();
 ```
 

@@ -296,13 +296,18 @@ function apiErrorEvery(status: number, headers: Record<string, string>) {
 
 it("sends an empty JSON body when every body field is left out", async () => {
   const { client, requests } = fakeClient(async () => json({}));
-  await client.agents.secrets.create({ organization: "acme", agent: "bot" });
   await client.indexes.update({ organization: "acme", index: "docs" });
+  await client.agents.secrets.create({
+    organization: "acme",
+    agent: "bot",
+    expires_at: null,
+  });
   await client.account.logout();
-  const [create, update, logout] = requests;
-  expect(create.headers.get("Content-Type")).toBe("application/json");
-  expect(await create.text()).toBe("{}");
+  const [update, create, logout] = requests;
+  expect(update.headers.get("Content-Type")).toBe("application/json");
   expect(await update.text()).toBe("{}");
+  // A secret that never expires says so with null.
+  expect(await create.text()).toBe('{"expires_at":null}');
   // An operation that takes no body still sends none.
   expect(logout.headers.get("Content-Type")).toBeNull();
   expect(await logout.text()).toBe("");
