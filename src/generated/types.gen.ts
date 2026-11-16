@@ -784,10 +784,17 @@ export type Agent = {
 export type AgentPermissions = Array<Permission>;
 
 /**
- * An organization's agents.
+ * A page of an organization's agents.
  */
 export type AgentPage = {
-  agents: Array<Agent>;
+  /**
+   * The agents on this page.
+   */
+  results: Array<Agent>;
+  /**
+   * How to request the next page.
+   */
+  pagination: Pagination;
 };
 
 /**
@@ -2675,7 +2682,16 @@ export type ListAgentsData = {
      */
     organization: Name;
   };
-  query?: never;
+  query?: {
+    /**
+     * The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.
+     */
+    amount?: number;
+    /**
+     * The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.
+     */
+    page?: string;
+  };
   url: "/organizations/{organization}/agents";
 };
 
@@ -2698,7 +2714,7 @@ export type ListAgentsError = ListAgentsErrors[keyof ListAgentsErrors];
 
 export type ListAgentsResponses = {
   /**
-   * The agents.
+   * A page of agents.
    */
   200: AgentPage;
 };

@@ -1840,6 +1840,8 @@ export class Agents extends HeyApiClient {
   public list<ThrowOnError extends boolean = true>(
     parameters: {
       organization: Name;
+      amount?: number;
+      page?: string;
     },
     options?: Options<never, ThrowOnError>,
   ): RequestResult<
@@ -1850,7 +1852,15 @@ export class Agents extends HeyApiClient {
   > {
     const params = buildClientParams(
       [parameters],
-      [{ args: [{ in: "path", key: "organization" }] }],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "query", key: "amount" },
+            { in: "query", key: "page" },
+          ],
+        },
+      ],
     );
     return (options?.client ?? this.client).get<
       ListAgentsResponses,
