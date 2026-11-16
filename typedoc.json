@@ -42,7 +42,8 @@
     "src/generated/client/types.gen.ts:Options",
     "src/generated/client/types.gen.ts:RequestResult",
     "src/generated/client/types.gen.ts:TDataShape",
-    "src/generated/core/types.gen.ts:ClientMeta"
+    "src/generated/core/types.gen.ts:ClientMeta",
+    "src/generated/sdk.gen.ts:Indexes"
   ],
   "externalSymbolLinkMappings": {
     "typescript": {

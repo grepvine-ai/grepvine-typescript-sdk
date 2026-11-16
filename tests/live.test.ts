@@ -52,7 +52,7 @@ it.skipIf(!endpoint || !apiKey || !organization)(
       expect(head).toBe("hello");
 
       const listed = await collect(
-        paginate(client.documents.list, {
+        paginate(client.documents.listPage, {
           ...where,
           prefix: "sdk/",
           amount: 1,
@@ -61,7 +61,7 @@ it.skipIf(!endpoint || !apiKey || !organization)(
       expect(listed.map((doc) => doc.key)).toHaveLength(3);
 
       const hits = await collect(
-        paginate(client.search.query, {
+        client.search.query({
           ...where,
           pattern: "hello",
           mode: "literal",
@@ -72,7 +72,7 @@ it.skipIf(!endpoint || !apiKey || !organization)(
         "sdk/b.txt",
       ]);
       const flagged = await collect(
-        paginate(client.search.query, {
+        client.search.query({
           ...where,
           pattern: "hello",
           filter: "flag = true",

@@ -67,7 +67,7 @@ describe("configuration", () => {
     const { client, requests } = fakeClient(() => json(page([])), {
       apiKey: undefined,
     });
-    await client.organizations.list();
+    await client.organizations.listPage();
     expect(requests[0].headers.get("Authorization")).toBeNull();
   });
 
@@ -118,7 +118,7 @@ describe("session", () => {
     await client.account.login({ identifier: "ann", password: "secret" });
     await client.organizations.create({ name: "acme" });
     await client.account.logout();
-    await client.organizations.list();
+    await client.organizations.listPage();
     const [login, create, logout, list] = requests;
     expect(login.headers.get("Cookie")).toBeNull();
     expect(create.headers.get("Cookie")).toBe("__Host-grepvine-session=s1");
@@ -172,7 +172,7 @@ describe("errors", () => {
   it("tells an expired page token apart", async () => {
     const { client } = fakeClient(() => apiError(400, "invalid_page"));
     await expect(
-      client.indexes.list({ organization: "acme", page: "old" }),
+      client.indexes.listPage({ organization: "acme", page: "old" }),
     ).rejects.toBeInstanceOf(InvalidPageError);
   });
 
@@ -207,7 +207,7 @@ describe("retries", () => {
       ...where,
       "Idempotency-Key": "k".repeat(16),
     });
-    await client.documents.list({ organization: "acme", index: "d" });
+    await client.documents.listPage({ organization: "acme", index: "d" });
     const keys = requests.map((r) => r.headers.get("Idempotency-Key"));
     expect(keys[0]).not.toBe(keys[1]);
     expect(keys[2]).toBe("k".repeat(16));

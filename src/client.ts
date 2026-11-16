@@ -98,7 +98,7 @@ function agentToken(
 
 /**
  * Give every method its own `this`, so that a method can be passed on, as in
- * `paginate(client.indexes.list, ...)`. Nested resources are bound when
+ * `paginate(client.indexes.listPage, ...)`. Nested resources are bound when
  * first read.
  */
 function bindMethods<T extends object>(target: T): T {
@@ -147,10 +147,10 @@ function bindMethods<T extends object>(target: T): T {
  * thrown as an {@link APIError} subclass.
  *
  * ```ts
- * import { GrepvineClient, paginate } from "@grepvine/sdk";
+ * import { GrepvineClient } from "@grepvine/sdk";
  *
  * const client = new GrepvineClient({ apiKey: "gvk_..." });
- * for await (const org of paginate(client.organizations.list, {})) {
+ * for await (const org of client.organizations.list()) {
  *   console.log(org.name, org.role);
  * }
  * ```

@@ -63,9 +63,7 @@ Every method takes a second argument of request options, such as `signal`, an
 ## Organizations
 
 ```ts
-import { paginate } from "@grepvine/sdk";
-
-for await (const org of paginate(client.organizations.list, {})) {
+for await (const org of client.organizations.list()) {
   console.log(org.name, org.role);
 }
 
@@ -92,7 +90,7 @@ await client.organizations.members.update({
   user: "alice",
   role: "admin",
 });
-for await (const member of paginate(client.organizations.members.list, where)) {
+for await (const member of client.organizations.members.list(where)) {
   console.log(member.user.name, member.role);
 }
 await client.organizations.members.remove({ ...where, user: "alice" });
@@ -114,7 +112,7 @@ let index = await client.indexes.waitUntilReady({
 });
 console.log(index.state, index.document_count, index.tags.commit);
 
-for await (const index of paginate(client.indexes.list, {
+for await (const index of client.indexes.list({
   organization: "my-org",
   prefix: "docs-", // optional
 })) {
@@ -142,14 +140,14 @@ or tags needs the admin or owner role. Deletion completes in the background.
 ```ts
 const where = { organization: "my-org", index: "my-index" };
 
-for await (const hit of paginate(client.search.query, {
+for await (const hit of client.search.query({
   ...where,
   pattern: "TODO|FIXME",
 })) {
   console.log(`${hit.key}:${hit.line_number}: ${hit.text}`);
 }
 
-for await (const hit of paginate(client.search.query, {
+for await (const hit of client.search.query({
   ...where,
   pattern: "hello world",
   mode: "literal", // literal text instead of a regular expression
@@ -177,6 +175,8 @@ stores, so filters on those fields work without extra effort.
 ## Documents
 
 ```ts
+import { paginate } from "@grepvine/sdk";
+
 const where = { organization: "my-org", index: "my-index" };
 
 const results = await client.documents.putMany({
@@ -204,7 +204,7 @@ const head = await client.documents.get({
   Range: "bytes=0-1023",
 });
 
-for await (const doc of paginate(client.documents.list, {
+for await (const doc of paginate(client.documents.listPage, {
   ...where,
   prefix: "notes/",
 })) {
@@ -249,14 +249,13 @@ search, which a listing's `searchable` reports.
 
 ## Pagination
 
-Every list method and `search.query` returns one page: `results` and
-`pagination`. `paginate(method, parameters)` iterates every item of every
-page, fetching pages as the loop needs them:
+Every paged list, and `search.query`, comes in two forms. `list` goes through
+every result of every page, requesting each page as the loop reaches it.
+`documents` has only `listPage`, since its pages also carry
+`common_prefixes`.
 
 ```ts
-for await (const index of paginate(client.indexes.list, {
-  organization: "my-org",
-})) {
+for await (const index of client.indexes.list({ organization: "my-org" })) {
   // ...
 }
 ```
@@ -264,17 +263,25 @@ for await (const index of paginate(client.indexes.list, {
 It follows `pagination.next_page_id` while `pagination.has_next` is true; a
 page may be empty while more follow, as a search page that reached the
 service's time budget. `amount` (1 to 200) sets how many results each request
-asks for, and `page` starts from a page an earlier call returned. A page token
-is valid for 15 minutes and only with the same parameters, including
-`amount`; otherwise the service answers with `InvalidPageError`. For one page
-at a time, call the method itself:
+asks for. `listPage` (`search.queryPage`) returns one page: its `results` and
+a `pagination`, whose `next_page_id` the next call passes as `page`:
 
 ```ts
-const { results, pagination } = await client.indexes.list({
+const { results, pagination } = await client.indexes.listPage({
   organization: "my-org",
   amount: 50,
 });
+const next = await client.indexes.listPage({
+  organization: "my-org",
+  amount: 50,
+  page: pagination.next_page_id,
+});
 ```
+
+A page token is valid for 15 minutes and only with the same parameters,
+including `amount`; otherwise the service answers with `InvalidPageError`.
+`paginate(method, parameters)` iterates over the results of any `…Page`
+method, such as `documents.listPage`, starting from `page` when given.
 
 ## Errors
 
@@ -313,7 +320,7 @@ milliseconds.
 
 Every method returns a `Promise`. A client may be shared by any number of
 concurrent calls; a `429` pauses all of them. Methods keep their client when
-passed on, as `paginate` does. Pass `signal` to cancel a call, or
+passed on, as to `paginate`. Pass `signal` to cancel a call, or
 `AbortSignal.timeout(ms)` to bound one in total:
 
 ```ts
@@ -329,7 +336,7 @@ const index = await client.indexes.get(
 const created = await client.apiKeys.create({ name: "ci" });
 console.log(created.key); // shown only this once
 
-for await (const key of paginate(client.apiKeys.list, {})) {
+for await (const key of client.apiKeys.list()) {
   console.log(key.name, key.prefix, key.revoked_at ?? "active");
 }
 
@@ -413,7 +420,7 @@ instead of an API key:
 const agent = new GrepvineClient({
   agentSecret: process.env.CI_AGENT_SECRET,
 });
-for await (const hit of paginate(agent.search.query, {
+for await (const hit of agent.search.query({
   organization: "acme",
   index: "support",
   pattern: "TODO",

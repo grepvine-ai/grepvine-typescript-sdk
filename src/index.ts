@@ -20,6 +20,7 @@ export {
 } from "./resources.js";
 export {
   paginate,
+  type ListParameters,
   type Page,
   type PageItem,
   type PageMethod,
