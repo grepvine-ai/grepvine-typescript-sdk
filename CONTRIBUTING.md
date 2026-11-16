@@ -42,6 +42,12 @@ repository.
   comments from the spec; and the transport. Methods take one object of the
   API's parameters (`paramsStructure: "flat"`) and return the answer's data,
   throwing on an error answer.
+- Paged operations follow the Python SDK. An operation that takes `page` is
+  generated as its mapped name plus `Page` (`indexes.listPage`), returning
+  one page. When its page holds only `results` and `pagination`, the
+  configuration's `node:set:before` hook also gives the class the mapped name
+  (`indexes.list`), which goes through every page with `paginate`.
+  `tests/coverage.test.ts` fixes both sets of operations.
 - Hand-written code is limited to what a generator cannot express: the client
   options and their resolution like `gv`, bearer authentication, the agent
   secret exchange and the login session, retries with stable

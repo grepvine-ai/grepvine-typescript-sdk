@@ -7,7 +7,7 @@
  * endpoint from GREPVINE_API_ENDPOINT.
  */
 import { randomUUID } from "node:crypto";
-import { GrepvineClient, paginate } from "@grepvine/sdk";
+import { GrepvineClient } from "@grepvine/sdk";
 
 async function main() {
   const organization = process.env.GREPVINE_ORGANIZATION;
@@ -32,8 +32,8 @@ async function main() {
 
   async function count(filter?: string): Promise<number> {
     let matches = 0;
-    // An amount of 1 shows paginate fetching page after page.
-    for await (const hit of paginate(client.search.query, {
+    // An amount of 1 shows list fetching page after page.
+    for await (const hit of client.search.query({
       ...where,
       pattern: "hello",
       mode: "literal",

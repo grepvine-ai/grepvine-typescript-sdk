@@ -19,7 +19,7 @@ const collect = async <T>(items: AsyncIterable<T>) => {
   return out;
 };
 
-describe("paginate", () => {
+describe("paged lists", () => {
   it("follows next_page_id through empty pages", async () => {
     const { client, requests } = fakeClient(
       sequence(
@@ -29,7 +29,7 @@ describe("paginate", () => {
       ),
     );
     const hits = await collect(
-      paginate(client.search.query, {
+      client.search.query({
         organization: "acme",
         index: "docs",
         pattern: "x",
@@ -50,9 +50,9 @@ describe("paginate", () => {
       sequence(json(page([{ role: "admin" }])), json(page([{ name: "o" }]))),
     );
     const members = await collect(
-      paginate(client.organizations.members.list, { organization: "acme" }),
+      client.organizations.members.list({ organization: "acme" }),
     );
-    const orgs = await collect(paginate(client.organizations.list, {}));
+    const orgs = await collect(client.organizations.list());
     expect([members.length, orgs.length]).toEqual([1, 1]);
     expect(new URL(requests[0].url).pathname).toBe(
       "/v1/organizations/acme/members",
@@ -63,7 +63,7 @@ describe("paginate", () => {
     const { client, requests } = fakeClient(() =>
       json(page([{ name: "i" }], "more")),
     );
-    for await (const index of paginate(client.indexes.list, {
+    for await (const index of paginate(client.indexes.listPage, {
       organization: "acme",
       page: "start",
     })) {
