@@ -341,7 +341,9 @@ it expires. A scope field left out sets no limit; `expires_at` is always
 given, `null` for a key that never expires. A key never does more than
 its account's role allows. The permissions are `search`, `read`, `write`,
 `create_index` (needs every index in scope), `manage_index`, and
-`manage_members` and `manage_organization` (both need one organization).
+`manage_members`, `manage_organization` and `manage_agents` (all three need
+one organization). A key created with `agent`, the name of an agent of the
+key's organization, acts as that agent rather than as the account.
 
 ```ts
 const created = await client.apiKeys.create({
@@ -469,9 +471,43 @@ agent's managers to grant it.
 
 `client.agents` lists, creates, changes and deletes agents,
 `client.agents.managers` adds and removes their managers, and
-`client.agents.secrets` lists and revokes their secrets. They take a
+`client.agents.secrets` lists, creates and revokes their secrets. They take a
 signed-in session, or an API key of one organization with the
-`manage_agents` permission. Creating a secret takes a signed-in session.
+`manage_agents` permission. An agent's permissions are its ceiling: they stay
+within your own, and the key's when a key creates it.
+
+```ts
+await client.agents.create({
+  organization: "acme",
+  name: "ci",
+  description: "Searches the support index from CI.",
+  indexes: ["support"], // optional; every index when left out
+  permissions: ["search", "read"],
+});
+```
+
+Creating a secret takes a signed-in session. `expires_at` is always given:
+at most a year ahead, or `null` for a secret that never expires. The result
+carries the secret, shown only this once, and the agent's `client_id`, for
+OAuth libraries that ask for a client ID beside the secret:
+
+```ts
+const where = { organization: "acme", agent: "ci" };
+const created = await client.agents.secrets.create({
+  ...where,
+  expires_at: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+});
+console.log(created.secret, created.client_id);
+```
+
+An agent has at most two active secrets, so one can replace the other: to
+rotate, create a second secret, move the job to it, then revoke the first.
+Creating a third throws `ConflictError`.
+
+```ts
+const { secrets } = await client.agents.secrets.list(where);
+await client.agents.secrets.revoke({ ...where, secret_id: secrets[0].id });
+```
 
 ## Limits worth knowing
 
