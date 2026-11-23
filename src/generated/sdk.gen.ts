@@ -66,6 +66,8 @@ import type {
   GetIndexResponses,
   GetOrganizationErrors,
   GetOrganizationResponses,
+  GetOrganizationUsageErrors,
+  GetOrganizationUsageResponses,
   GetUsernameAvailabilityErrors,
   GetUsernameAvailabilityResponses,
   IndexDescription,
@@ -133,6 +135,7 @@ import type {
   UpdateOrganizationMemberErrors,
   UpdateOrganizationMemberResponses,
   UpdateOrganizationResponses,
+  UsageResolution,
 } from "./types.gen.js";
 
 export type Options<
@@ -1593,6 +1596,66 @@ export class Organizations extends HeyApiClient {
     });
   }
 
+  /**
+   * Get organization usage
+   *
+   * Returns what the organization stores and the requests it makes, for one index or all of them, over a window that
+   * ends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by month, starting no earlier
+   * than the hour, day or month the organization was created. Times are UTC.
+   * Requires the owner or admin role; a key needs the `read_usage` permission. Usage can trail activity by up to an
+   * hour.
+   *
+   */
+  public usage<ThrowOnError extends boolean = true>(
+    parameters: {
+      organization: Name;
+      resolution: UsageResolution;
+      index?: IndexName;
+    },
+    options?: Options<never, ThrowOnError>,
+  ): RequestResult<
+    GetOrganizationUsageResponses,
+    GetOrganizationUsageErrors,
+    ThrowOnError,
+    "data"
+  > {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "organization" },
+            { in: "query", key: "resolution" },
+            { in: "query", key: "index" },
+          ],
+        },
+      ],
+    );
+    return (options?.client ?? this.client).get<
+      GetOrganizationUsageResponses,
+      GetOrganizationUsageErrors,
+      ThrowOnError,
+      "data"
+    >({
+      responseStyle: "data",
+      security: [
+        {
+          in: "cookie",
+          name: "__Host-grepvine-session",
+          type: "apiKey",
+        },
+        {
+          key: "apiKeyAuth",
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/organizations/{organization}/usage",
+      ...options,
+      ...params,
+    });
+  }
+
   private _members?: Members;
   get members(): Members {
     return (this._members ??= new Members({ client: this.client }));
@@ -1828,7 +1891,7 @@ export class Secrets extends HeyApiClient {
   /**
    * Revoke an agent secret
    *
-   * Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for it stop working at once. Its managers, owners and admins can revoke one.
+   * Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for it stop working everywhere within 10 seconds. Its managers, owners and admins can revoke one.
    */
   public revoke<ThrowOnError extends boolean = true>(
     parameters: {
@@ -2119,7 +2182,7 @@ export class Agents extends HeyApiClient {
   /**
    * Update an agent
    *
-   * Changes an agent's description or permissions, or disables or enables it. Its managers, owners and admins can change it, and only within their own permissions (and the key's, for a key with `manage_agents`); any of them can disable it. New permissions must also be allowed by every manager's role, or the change is refused with 409. Saving the permissions of an agent with no managers makes you one. A disabled agent is refused at once, with every credential it has.
+   * Changes an agent's description or permissions, or disables or enables it. Its managers, owners and admins can change it, and only within their own permissions (and the key's, for a key with `manage_agents`); any of them can disable it. New permissions must also be allowed by every manager's role, or the change is refused with 409. Saving the permissions of an agent with no managers makes you one. A disabled agent is refused everywhere within 10 seconds, with every credential it has.
    */
   public update<ThrowOnError extends boolean = true>(
     parameters: {
