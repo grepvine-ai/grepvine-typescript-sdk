@@ -22,12 +22,20 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    permissions:
-      contents: write
     steps:
+      # The treeverse-ci-bot app is exempt from main's protection rules; the
+      # built-in GITHUB_TOKEN cannot push to main.
+      - name: Create a GitHub App token
+        if: github.event_name == 'workflow_dispatch'
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.CI_BOT_PRIVATE_KEY }}
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.sha }}
+          token: ${{ steps.app-token.outputs.token || github.token }}
           fetch-depth: 0
       - name: Check the requested snapshot is still current
         if: github.event_name == 'workflow_dispatch' && inputs.snapshot_commit != ''
@@ -53,9 +61,12 @@ jobs:
         run: git diff --exit-code -- src/generated
       - name: Commit validated generated updates
         if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BOT: ${{ steps.app-token.outputs.app-slug }}[bot]
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name "$BOT"
+          git config user.email "$(gh api "/users/$BOT" -q .id)+$BOT@users.noreply.github.com"
           git add src/generated
           if ! git diff --cached --quiet; then
             source_commit=$(python3 -c 'import json; print(json.load(open("spec/source.json"))["commit"])')
