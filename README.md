@@ -76,6 +76,12 @@ await client.organizations.transferOwnership({
   user: "alice",
 });
 await client.organizations.delete({ organization: "new-org" });
+
+// The last 30 days, by day; add `index` to count one index.
+const usage = await client.organizations.usage({
+  organization: "my-org",
+  resolution: "day",
+});
 ```
 
 Members are managed through `client.organizations.members`:
