@@ -2,6 +2,7 @@
   "listOrganizations": ["organizations", "list"],
   "createOrganization": ["organizations", "create"],
   "getOrganization": ["organizations", "get"],
+  "getOrganizationUsage": ["organizations", "getUsage"],
   "updateOrganization": ["organizations", "update"],
   "deleteOrganization": ["organizations", "delete"],
   "transferOrganizationOwnership": ["organizations", "transferOwnership"],
