@@ -559,7 +559,8 @@ export type DeviceTokenRequest = {
  * `create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.
  * `manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the
  * organization; `manage_agents` creates, changes and deletes agents and their managers, and revokes their
- * secrets, but never creates a secret. These three are opt-in and need a key scoped to one organization.
+ * secrets, but never creates a secret; `read_usage` reads the organization's usage, and needs every index in scope.
+ * These four are opt-in and need a key scoped to one organization; none can be granted to an app or an agent.
  *
  */
 export type Permission =
@@ -570,7 +571,8 @@ export type Permission =
   | "manage_index"
   | "manage_members"
   | "manage_organization"
-  | "manage_agents";
+  | "manage_agents"
+  | "read_usage";
 
 /**
  * The permissions a key carries, each named once.
@@ -776,6 +778,82 @@ export type Agent = {
    * Whether the agent's permissions should be reviewed, because a manager left or lost a role.
    */
   needs_review: boolean;
+};
+
+/**
+ * The length of a usage bucket.
+ */
+export type UsageResolution = "hour" | "day" | "month";
+
+/**
+ * What an organization, or one of its indexes, stores and the requests it makes, by bucket.
+ */
+export type OrganizationUsage = {
+  resolution: UsageResolution;
+  current: StorageUsage;
+  /**
+   * One bucket per hour, day or month of the window, oldest first, each present even with no activity; the window starts no earlier than the bucket the organization was created in. The last bucket is the current one and is still filling.
+   */
+  buckets: Array<UsageBucket>;
+};
+
+/**
+ * What is stored now: the documents and their total size, as uploaded. Metadata is not counted.
+ */
+export type StorageUsage = {
+  /**
+   * The number of documents.
+   */
+  documents: number;
+  /**
+   * The total size of the documents in bytes, as uploaded and as a download returns them.
+   */
+  stored_bytes: number;
+};
+
+/**
+ * Usage in one hour, day or month.
+ */
+export type UsageBucket = {
+  /**
+   * When the bucket starts, in UTC.
+   */
+  start: string;
+  /**
+   * The average number of documents stored during the bucket, rounded down. Storage is measured once an hour; this is absent when it was not measured in any hour of the bucket, such as the current hour before its measurement.
+   */
+  documents?: number;
+  /**
+   * The average size of the documents stored during the bucket, in bytes, rounded down: the size measured in each hour of the bucket, an index that did not exist counting as zero, divided by the hours measured. Documents stored and deleted within the same hour are not seen. Absent when no hour of the bucket was measured.
+   */
+  stored_bytes?: number;
+  requests: UsageRequests;
+};
+
+/**
+ * The successful requests in a bucket, by operation. A request that was refused or failed is not counted. An API request and an MCP tool call each count once; a batch counts once.
+ */
+export type UsageRequests = {
+  /**
+   * Searches.
+   */
+  search: number;
+  /**
+   * Document reads and listings.
+   */
+  read: number;
+  /**
+   * Document writes and deletions.
+   */
+  write: number;
+  /**
+   * Every other request on the organization or its indexes, such as reading or changing an index or the members.
+   */
+  manage: number;
+  /**
+   * All of them.
+   */
+  total: number;
 };
 
 /**
@@ -3168,6 +3246,55 @@ export type RevokeAgentSecretResponses = {
 
 export type RevokeAgentSecretResponse =
   RevokeAgentSecretResponses[keyof RevokeAgentSecretResponses];
+
+export type GetOrganizationUsageData = {
+  body?: never;
+  path: {
+    /**
+     * The organization's name. Any spelling that differs only in case refers to the same organization.
+     */
+    organization: Name;
+  };
+  query: {
+    /**
+     * The length of each bucket: `hour` for the last 24 hours, `day` for the last 30 days, `month` for the last 12 months.
+     */
+    resolution: UsageResolution;
+    /**
+     * Counts only this index. Omit it for every index and the requests made on the organization itself. Any spelling that differs only in case refers to the same index.
+     */
+    index?: IndexName;
+  };
+  url: "/organizations/{organization}/usage";
+};
+
+export type GetOrganizationUsageErrors = {
+  /**
+   * The request is not permitted.
+   */
+  403: Error;
+  /**
+   * The resource does not exist or is not visible.
+   */
+  404: Error;
+  /**
+   * The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.
+   */
+  default: Error;
+};
+
+export type GetOrganizationUsageError =
+  GetOrganizationUsageErrors[keyof GetOrganizationUsageErrors];
+
+export type GetOrganizationUsageResponses = {
+  /**
+   * The organization's usage.
+   */
+  200: OrganizationUsage;
+};
+
+export type GetOrganizationUsageResponse =
+  GetOrganizationUsageResponses[keyof GetOrganizationUsageResponses];
 
 export type ListIndexesData = {
   body?: never;

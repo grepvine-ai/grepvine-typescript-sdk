@@ -5,6 +5,7 @@
   "updateOrganization": ["organizations", "update"],
   "deleteOrganization": ["organizations", "delete"],
   "transferOrganizationOwnership": ["organizations", "transferOwnership"],
+  "getOrganizationUsage": ["organizations", "usage"],
   "listOrganizationMembers": ["organizations", "members", "list"],
   "addOrganizationMember": ["organizations", "members", "add"],
   "updateOrganizationMember": ["organizations", "members", "update"],
